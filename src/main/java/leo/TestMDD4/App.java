@@ -3,6 +3,7 @@ package leo.TestMDD4;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -40,7 +41,7 @@ public class App
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	try {   
-	    	String modelName = "gpl";
+	    	String modelName = "gplSmall";
 	   		File file = new File("featureModels/"+modelName+"Model.xml");  
 	   		DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();  
 	   		
@@ -53,6 +54,7 @@ public class App
 	   		// First item of the list is always the struct node
 	   		Node struct = nodeList.item(0);
 	   		
+	   		
 	   		MDDConv conv = new MDDConv();
     		if (struct.hasChildNodes()) {  
     			// Generates the variables for the MDD
@@ -61,10 +63,12 @@ public class App
     		// Displays the variables currently generated
     		conv.displayVars();
     		
-    		int baseMDD = conv.getStartingNode();
+	   		// ******************************************************************************************
+	   		
+    		// int baseMDD = conv.getStartingNode();
 
 
-	   		conv.MDDBuilderStarter(struct.getChildNodes());
+	   		// conv.MDDBuilderStarter(struct.getChildNodes());
 	   		
 	   		
     		/*

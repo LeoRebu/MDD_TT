@@ -31,5 +31,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/ctwedge.util"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/pMEDICI"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ctwedge.fmtester"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/5"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
