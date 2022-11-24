@@ -38,7 +38,7 @@
 							</and>
 							<alt abstract="true" name="217">
 								<feature name="2171"/>
-								<feature name="2172"/>
+								<feature mandatory="true" name="2172"/>
 							</alt>
 						</and>
 						<and abstract="true" name="22">

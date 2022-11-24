@@ -23,10 +23,10 @@
       <version>3.8.1</version>
       <scope>test</scope>
     </dependency>
-  	<dependency>
+  	<!--<dependency>
   		<groupId>org.colomoto.MDDlib</groupId>
   		<artifactId>mddlib</artifactId>
   		<version>0.4.1</version>
-  	</dependency>
+  	</dependency>-->
   </dependencies>
 </project>

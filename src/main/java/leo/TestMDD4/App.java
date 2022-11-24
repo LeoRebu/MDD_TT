@@ -50,25 +50,37 @@ public class App
 	   		System.out.println("Root element: "+ document.getDocumentElement().getNodeName());  
 	   		// Contains a single item node list for the struct node
 	   		NodeList nodeList = document.getElementsByTagName("struct");
-	  		
-	   		// First item of the list is always the struct node
-	   		Node struct = nodeList.item(0);
-	   		
+	  			   		
+	   		Vector<Node> root = new Vector<Node>();
+	   		root.add(nodeList.item(0).getChildNodes().item(1));
 	   		
 	   		MDDConv conv = new MDDConv();
-    		if (struct.hasChildNodes()) {  
+    		if (nodeList.item(0).hasChildNodes()) {  
     			// Generates the variables for the MDD
-    			conv.variablesGenerator(struct.getChildNodes());  
+    			conv.variablesGenerator(root); 
     		}  
     		// Displays the variables currently generated
     		conv.displayVars();
     		
+    		int baseMDD = conv.getStartingNode(nodeList.item(0).getChildNodes().item(1), 1);
+    		
+    		MDDManager manager = conv.returnManager();
+    		System.out.println(manager.dumpMDD(baseMDD).toString());  
+
+
+       		System.out.print("\nBefore new PathSearcher\n");
+    		PathSearcher searcher = new PathSearcher(manager, 1);
+
+       		System.out.print("\nBefore searcher setNode. \nBaseMDD: "+baseMDD);
+    		searcher.setNode(baseMDD);
+       		System.out.print("\nBefore countPaths\n");
+    		int nPaths = searcher.countPaths();
+
+       		System.out.print("Paths #:\n " + nPaths + "\n\n");
+       		
+    		
 	   		// ******************************************************************************************
 	   		
-    		// int baseMDD = conv.getStartingNode();
-
-
-	   		// conv.MDDBuilderStarter(struct.getChildNodes());
 	   		
 	   		
     		/*

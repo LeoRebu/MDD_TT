@@ -32,5 +32,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/pMEDICI"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ctwedge.fmtester"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/5"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/mddlib"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

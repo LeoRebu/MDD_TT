@@ -84,7 +84,10 @@ public class NodeManager {
 	public String getName() {
 		return currentNode.getAttributes().getNamedItem("name").getNodeValue();
 	}
-	
+
+	public String getType() {
+		return currentNode.getNodeName();
+	}
 	
 	public int getConstraintChildrenNumber() {
 		return orCh.size() + andCh.size() + altCh.size();
@@ -113,29 +116,39 @@ public class NodeManager {
 	
 	public int getDups() {
 		if (currentNode.getNodeName() == "alt")
-			// NEED TO CHECK MATHS FOR DUPS
-			return (int) Math.ceil(this.getTotalChildrenNumber()/64.0);
-		else if (currentNode.getNodeName() == "and" && this.getMandatoryChildrenNumber()>0)				
-			// subtracting (mandatoryChildren-1) simplifies the structure of the MDD by grouping all mandatory features into
-	    	// a single sub boolean value, due to the fact there's a single path leading to T from all mandatory features.
-			return (int) Math.ceil( (this.getTotalChildrenNumber() - (this.getMandatoryChildrenNumber() - 1)) / 6.0);
-		else
-			return (int) Math.ceil( this.getTotalChildrenNumber() / 6.0);
+			// maths should be good now
+			return (int) Math.ceil(this.getTotalChildrenNumber()/63.0);
+		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
+			return (int) 1;
+		else			
+			// Subtracting mandatoryChildren simplifies the structure of the MDD by removing all mandatory features from the equation,
+			// due to the fact there's a single path leading to T from all mandatory features. Doesn't impact OR (no mandatory children)
+			return (int) Math.ceil( (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) / 6.0);
 	}
 	
+	// TODO: add extra value to get around the semplification that'd flatten nodes that are all 1s
 	public byte getBounds() {
 		// Boundary corresponds to the # of child nodes mod 64. 
-		// 64 -> 64 | 65 -> 2
+		// 63 -> 64 | 64 -> 2 | 65 -> 3
 		if (currentNode.getNodeName() == "alt")
-			return (byte) (this.getTotalChildrenNumber() - ( 63*(this.getDups()-1) ));
-		// cNN - (6*(dups-1)) corresponds to the number of children mod 6, where 6 stays 6 rather than 0.
-		// 6 children = 2^6 | 7 children = 2^1 
-		else if (currentNode.getNodeName() == "and" && this.getMandatoryChildrenNumber()>0)
-			return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - (this.getMandatoryChildrenNumber() - 1)) - (6*(this.getDups()-1)) );
+			return (byte) ( this.getTotalChildrenNumber() - ( 63*(this.getDups()-1) ) + 1 ) ;
+		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
+			return (byte) 2;
 		else
-			return (byte) Math.pow( 2,this.getTotalChildrenNumber()-(6*(this.getDups()-1)) );
+			// cNN - (6*(dups-1)) corresponds to the number of children mod 6, where 6 stays 6 rather than 0.
+			// 6 children = 2^6 | 7 children = 2^1 
+			return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) );
 	}
-	
+
+	public byte getBoundsNoDups() {
+		// Used for calculation in duplicated variables
+		if (currentNode.getNodeName() == "alt")
+			return (byte) ( this.getTotalChildrenNumber() + 1 ) ;
+		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
+			return (byte) 2;
+		else
+			return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) );
+	}
 
 	public Vector<Node> getOrderedConstraintChildrenList() {
 		Vector<Node> OrderedChildrenList = new Vector<Node>();
