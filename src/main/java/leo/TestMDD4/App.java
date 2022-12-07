@@ -41,7 +41,7 @@ public class App
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	try {   
-	    	String modelName = "gplSmallTest";
+	    	String modelName = "eshop";
 	   		File file = new File("featureModels/"+modelName+"Model.xml");  
 	   		DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();  
 	   		

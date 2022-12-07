@@ -18,10 +18,8 @@
 						<feature name="Connected"/>
 						<feature name="Connected"/>
 						<feature name="Connected"/>
-						<alt abstract="true" mandatory="true" name="Wgt">
-							<feature name="Weighted"/>
-							<feature name="Unweighted"/>
-						</alt>
+						<feature name="Connected"/>
+						<feature name="Connected"/>
 					</or>
 					<alt abstract="true" mandatory="true" name="Wgt">
 						<feature name="Weighted"/>
