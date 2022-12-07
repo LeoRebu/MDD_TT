@@ -1,0 +1,84 @@
+Model MgplSmallTestModel Parameters :
+GPL : Boolean
+MainGpl : Boolean
+Driver : Boolean
+DriverProg : Boolean
+Prog : Boolean
+Benchmark : Boolean
+Alg : Boolean
+Number : Boolean
+Connected : Boolean
+MSTPrim1 : Boolean
+MSTPrim12 : Boolean
+MSTPrim13 : Boolean
+MSTPrim14 : Boolean
+MSTPrim15 : Boolean
+MSTPrim16 : Boolean
+MSTPrim17 : Boolean
+MSTPrim18 : Boolean
+MSTPrim19 : Boolean
+MSTPrim121 : Boolean
+MSTPrim122 : Boolean
+MSTPrim123 : Boolean
+MSTPrim124 : Boolean
+MSTPrim125 : Boolean
+MSTPrim126 : Boolean
+MSTPrim127 : Boolean
+MSTPrim128 : Boolean
+MSTPrim129 : Boolean
+MSTPrim1231 : Boolean
+MSTPrim1232 : Boolean
+MSTPrim1233 : Boolean
+MSTPrim1234 : Boolean
+MSTPrim1235 : Boolean
+MSTPrim1236 : Boolean
+MSTPrim1237 : Boolean
+MSTPrim1238 : Boolean
+MSTPrim1239 : Boolean
+MSTPrim1123 : Boolean
+MSTPrim1123123 : Boolean
+Src : { BFS DFS NONE }
+Wgt : { Weighted Unweighted NONE }
+Gtp : { Directed Undirected NONE } Constraints :
+# GPL == TRUE #
+# MainGpl == TRUE <=> GPL == TRUE #
+# Driver == TRUE <=> MainGpl == TRUE #
+# DriverProg == TRUE <=> Driver == TRUE #
+# Prog == TRUE <=> DriverProg == TRUE #
+# Benchmark == TRUE <=> DriverProg == TRUE #
+# Alg == TRUE <=> MainGpl == TRUE #
+# Alg == TRUE => Number == TRUE || Connected == TRUE || MSTPrim1 == TRUE || MSTPrim12 == TRUE || MSTPrim13 == TRUE || MSTPrim14 == TRUE || MSTPrim15 == TRUE || MSTPrim16 == TRUE || MSTPrim17 == TRUE || MSTPrim18 == TRUE || MSTPrim19 == TRUE || MSTPrim121 == TRUE || MSTPrim122 == TRUE || MSTPrim123 == TRUE || MSTPrim124 == TRUE || MSTPrim125 == TRUE || MSTPrim126 == TRUE || MSTPrim127 == TRUE || MSTPrim128 == TRUE || MSTPrim129 == TRUE || MSTPrim1231 == TRUE || MSTPrim1232 == TRUE || MSTPrim1233 == TRUE || MSTPrim1234 == TRUE || MSTPrim1235 == TRUE || MSTPrim1236 == TRUE || MSTPrim1237 == TRUE || MSTPrim1238 == TRUE || MSTPrim1239 == TRUE || MSTPrim1123 == TRUE || MSTPrim1123123 == TRUE #
+# Number == TRUE => Alg == TRUE #
+# Connected == TRUE => Alg == TRUE #
+# MSTPrim1 == TRUE => Alg == TRUE #
+# MSTPrim12 == TRUE => Alg == TRUE #
+# MSTPrim13 == TRUE => Alg == TRUE #
+# MSTPrim14 == TRUE => Alg == TRUE #
+# MSTPrim15 == TRUE => Alg == TRUE #
+# MSTPrim16 == TRUE => Alg == TRUE #
+# MSTPrim17 == TRUE => Alg == TRUE #
+# MSTPrim18 == TRUE => Alg == TRUE #
+# MSTPrim19 == TRUE => Alg == TRUE #
+# MSTPrim121 == TRUE => Alg == TRUE #
+# MSTPrim122 == TRUE => Alg == TRUE #
+# MSTPrim123 == TRUE => Alg == TRUE #
+# MSTPrim124 == TRUE => Alg == TRUE #
+# MSTPrim125 == TRUE => Alg == TRUE #
+# MSTPrim126 == TRUE => Alg == TRUE #
+# MSTPrim127 == TRUE => Alg == TRUE #
+# MSTPrim128 == TRUE => Alg == TRUE #
+# MSTPrim129 == TRUE => Alg == TRUE #
+# MSTPrim1231 == TRUE => Alg == TRUE #
+# MSTPrim1232 == TRUE => Alg == TRUE #
+# MSTPrim1233 == TRUE => Alg == TRUE #
+# MSTPrim1234 == TRUE => Alg == TRUE #
+# MSTPrim1235 == TRUE => Alg == TRUE #
+# MSTPrim1236 == TRUE => Alg == TRUE #
+# MSTPrim1237 == TRUE => Alg == TRUE #
+# MSTPrim1238 == TRUE => Alg == TRUE #
+# MSTPrim1239 == TRUE => Alg == TRUE #
+# MSTPrim1123 == TRUE => Alg == TRUE #
+# MSTPrim1123123 == TRUE => Alg == TRUE #
+# Src != NONE => MainGpl == TRUE #
+# Wgt != NONE <=> MainGpl == TRUE #
+# Gtp != NONE <=> MainGpl == TRUE #

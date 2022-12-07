@@ -34,41 +34,39 @@ public class MDDConv {
 		
     	for (int count = 0; count < nodes.size(); count++) {  
    			NodeManager ocl = new NodeManager(nodes.get(count));
-    		// Prints out the name of the node (and, or, alt or feature)  
-    		System.out.println("\nNode Name =" + ocl.getType() + " [OPEN]");  
-    		// Prints out the name of the element
-   			System.out.println("Name =" +  ocl.getName()); 
-    		System.out.println("ChildNodesNum#: "+ ocl.getTotalChildrenNumber());
-    		System.out.println("Dups#: "+ ocl.getDups());
-    		
     		String varName = ocl.getName() + "Var";
     			
     		switch (ocl.getType()) {
 		    	// Add as variable
 		    	case ("and"):
 		    	case ("or"):
-		    		System.out.println("B4 AND or OR Mngmt\n");
 			    	for (int i=0; i<ocl.getDups(); i++) {
 			    		
 			    		if (i == 0)
-			    			mvf.add(varName + i, ocl.getBounds());
-			    		else 
+			    			// Very specific case of a leaf AND node to avoid flattening of node
+			    			if (ocl.getMandatoryChildrenNumber() > 0 && ocl.isMDDLeaf() && ocl.getDups() == 1)
+			    				mvf.add(varName + i, (byte)(ocl.getBounds()+1));
+			    			else
+			    				mvf.add(varName + i, ocl.getBounds());
+		   				else if ( i == ocl.getDups()-1)
 			    			// 64 for variables, 65th for a zero to prevent flattening of node
 			    			mvf.add(varName + i, (byte)65 );
+		   				else
+			    			// 64 for variables, 65th for a zero to prevent flattening of node
+		   					mvf.add(varName + i, (byte)64 );
 			        	this.varCount++;
 			    	}
 		    	break;
 		    	// Add as variable
 		    	case ("alt"):
-		    		System.out.println("B4 ALT Mngmt\n");
 		    	
 		    		if (ocl.getTotalChildrenNumber()>1) {
 			   			for (int i=0; i<ocl.getDups(); i++) {
 			   				if (i == 0)
 			   					mvf.add(varName + i, ocl.getBounds() );
-			   				else
-				    			// 64 for variables, 65th for a zero to prevent flattening of node
-			   					mvf.add(varName + i, (byte)65 );
+			   				else 
+				    			// 63 for variables, 64th for a zero to prevent flattening of node
+			   					mvf.add(varName + i, (byte)64 );
 			   				this.varCount++;
 			   			}
 		    		} else {
@@ -105,7 +103,7 @@ public class MDDConv {
     }
     
 
-	public int getStartingNode(Node currentNode, int destination) throws InterruptedException {
+	public int getNode(Node currentNode, int destination) throws InterruptedException {
 		
 		if (manager == null)
 			throw new RuntimeException(
@@ -124,185 +122,292 @@ public class MDDConv {
 		}
 			
 		
-		// TODO: Manage duplications, check that bounds calculations correspond on both sides (variable creation and node creation)
-		Vector<Vector<Integer>> mddNodePathMatrix = new Vector<Vector<Integer>>();
+		
+		// Creates and initialises the matrix for duplications
+		Vector<Vector<Integer>> mddNodePathMatrix = new Vector<Vector<Integer>>(duplicatedVar.length);
+		for (int i=0;i<duplicatedVar.length;i++)
+			mddNodePathMatrix.add(i,new Vector<Integer>());
+		
 		
 		Vector<Integer> mddNodePath = new Vector<Integer>();
 		Vector<Integer> tempNodePath = new Vector<Integer>();
 
-		// Only check children if we know there's more constraints downstream
+		System.out.println("mddNodePathMatrix length: "+ mddNodePathMatrix.size());
+		System.out.println("duplicatedVar length: "+ duplicatedVar.length);
+		System.out.println("Dups: "+ ocl.getDups());
+		System.out.println("No Dups " + ocl.getBoundsNoDups());
+		
+		int newNode = 1;
+
 		if (ocl.isMDDLeaf()) {  
-			mddNodePath.add(0);
-	    	switch (ocl.getType()) {
-		    	// Depending on how many mandatory features
-		    	case ("and"):
-		    	case ("or"):
-		    	case ("alt"):
-		    		if (ocl.getDups() == 1) {
-		    			System.out.println("var: "+varName+0);
-		    			System.out.println("Bounds no dups: "+ ocl.getBoundsNoDups());
-		    			// Cycles through all the possible values obtainable by the variable.
-		    			for (int j=1; j < ocl.getBoundsNoDups();j++) 
-		    				mddNodePath.add(destination);
-		    			
-		    		} else {/*
-		    			// When the variable has been duplicated.
-			   			for (int i=0; i<dups; i++) {
-				    	    	this.varCount++;
-		    			}*/
+			// Leaf Children
+
+    		if (ocl.getDups() == 1) {
+    			// No duplications, same for all three types
+    			mddNodePath.add(0);
+    			if (ocl.getMandatoryChildrenNumber() != 0)
+	    			mddNodePath.add(destination);
+
+    			System.out.println("var: "+varName+0);
+    			System.out.println("Bounds no dups: "+ ocl.getBoundsNoDups());
+    			// Cycles through all the possible values obtainable by the variable.
+    			for (int j=1; j < ocl.getBoundsNoDups();j++) 
+    				mddNodePath.add(destination);
+    			
+
+					
+    		} else {
+    			// Leaf with duplications, distinguishes between ALT and OR/AND nodes.
+    			if (ocl.getType() == "alt") {
+    				System.out.println("Test " + ocl.getBoundsNoDups());
+	    			// First value is zero
+	    			tempNodePath.add(0);
+
+	    			// Cycles through all the possible values obtainable by the variable.
+	    			for (int j=1; j < ocl.getBoundsNoDups();j++) {
+	    				
+	    				tempNodePath.add(destination);
+	    				
+	   					if (tempNodePath.size() == 64) {
+	   						// Empty mddNodePath into finalPath
+	   						
+	   						int[] helper = new int[64];
+	   						// Turns the Vector<Integer> that has been filled into an int[]
+	   						for (int k=0; k<64; k++)
+	   							helper[k] = tempNodePath.get(k);
+	   						
+	   						mddNodePath.add(duplicatedVar[0].getNode(helper));
+	   						tempNodePath.clear();
+	   						tempNodePath.add(0);
+	   					}
 	    			}
-	    		break;
-			}
+	    			
+	    			// Leftovers in the temporary path are included in the last bottom level node, filled with zeroes otherwise
+	    			if (tempNodePath.size() > 0) {
+	    				// Fill the node with zeroes to avoid mismatch
+		    			for (int j=tempNodePath.size(); j<65; j++)
+	   						tempNodePath.add(0);
+		    			int[] finalPath = new int[64];
+   						for (int k=0; k<64; k++)
+   							finalPath[k] = tempNodePath.get(k);
+   						mddNodePath.add(duplicatedVar[0].getNode(finalPath));
+	    			}
+	    			
+    			} else {
+    				// AND or OR leaf nodes
+					int[] dupsBasePath = new int[65];
+
+		   			for (int i=0; i < ocl.getBoundsNoDups() / 64 ; i++) {
+		    			// The cycle repeats for as many times the bottom level is duplicated
+
+		   				// Creation of bottom level nodes paths
+		   				for (int j = 0; j < 64; j++) {
+		   					if (i==0 && j==0) {
+		   						if (ocl.getMandatoryChildrenNumber() == 0)
+		   							dupsBasePath[j]=0;
+		   						else
+		   							dupsBasePath[j]=destination;
+		   					} else
+		   						dupsBasePath[j]=destination;
+		   				}
+		   				// 65th path to zero (to avoid flattening)
+   						dupsBasePath[64]=0;
+
+   						// After reaching 65 paths, creates a bottom level node (for MDD ordering reasons)
+	   					mddNodePathMatrix.get(0).add(duplicatedVar[duplicatedVar.length-1].getNode(dupsBasePath));
+   						
+		   				// Creation of higher level nodes paths (whenever a level reaches bounds, we pack it in the higher level
+		   				for (int j = 1; j<ocl.getDups()-1; j++) {
+		   					if (mddNodePathMatrix.get(j-1).size() == 64) {
+		   						int[] helper = new int[64];
+		   						// Turns the Vector<Integer> that has been filled into an int[]
+		   						for (int k=0; k<64; k++)
+		   							helper[k] = mddNodePathMatrix.get(j-1).get(k);
+		   						
+		   						// The new node is added to the path of the level above (j+1)
+		   						// and the node is created from the same level of variable:
+		   						// Level 1 -> Second last duplicatedVar (length - 1)
+		   						// Level ocl.getDups()-2 -> duplicatedVar[0] 
+		   						mddNodePathMatrix.get(j).add(duplicatedVar[ (duplicatedVar.length-1) - j ].getNode(helper));
+			   					mddNodePathMatrix.get(j-1).clear();
+		   					}
+		   				}
+		   			}
+
+		   			mddNodePath = mddNodePathMatrix.get(ocl.getDups()-2);
+    			}
+    		}
 			
 		}  else {
-
-			switch ( ocl.getType() ) {
-				case ("and"):
-
-					int nextNode = destination;
-					
-
-					if (ocl.getMandatoryConstraintChildrenNumber() > 0 || ocl.getMandatoryFeatureChildrenNumber() > 0) {
-						// AND component followed by the OR component
-						
-						// PART 1.1: Mandatory constraints in series
-						// For every mandatory constraint child, build the "forced" part of the tree.
-						// With MCCN == 0, nextNode is destination, thus making the following OR section correct.
-						for (int i = 0; i < ocl.getMandatoryConstraintChildrenNumber(); i++) {
-							if (i == 0)
-								nextNode = getStartingNode(OrderedChildrenList.get(i), destination);
-							else
-								nextNode = getStartingNode(OrderedChildrenList.get(i), nextNode );
-						}
-						
-						// PART 1.2: Mandatory paths lead to one
-						// In the specific situation where there are no mandatory constraints and at least one mandatory feature,
-						// the path that would skip the optional constraints goes directly to 1 (no further constraints downstream)
-						if (ocl.getMandatoryConstraintChildrenNumber() == 0 && ocl.getMandatoryFeatureChildrenNumber() > 0) 
-							tempNodePath.add(0,1); // First element
-						else
-							tempNodePath.add(0,nextNode);
-						
-						
-						// PART 2: Mandatory not chosen paths lead to zero
-						// Set the first half of paths to zero, as they're the equivalent of saying one of the mandatory nodes is not selected.
-						// Removed, as AND constraints with lots of children would've meant million of paths leading to zero
-						// for (int i=0; i < ocl.getBoundsNoDups()/2 ;i++)
-							// mddNodePath.add(i, 0);
-						
-						// PART 3: Optional constraints go in an OR structure
-						// For every optional constraint child, builds the recursions necessary to create the OR structure
-						// The optional constraint children being after the mandatory ones, they are indexed using the MCCN
-						for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
-							for (int j=0; j < Math.pow(2, i); j++) 
-								if (j==0)
-									tempNodePath.add((int) Math.pow(2, i)+j, getStartingNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),nextNode));
-								else
-									tempNodePath.add((int) Math.pow(2, i)+j, getStartingNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),tempNodePath.get((int) ((Math.pow(2, i)+j) - Math.pow(2, i))) ));
-						
-						// PART 4: Building final paths array, duplicating based on optional features 
-						// For every optional feature child, duplicates the paths leading to each node and builds the actual path
-						if ((ocl.getFeatureChildrenNumber()) > 0)
-							for (int i=0; i < tempNodePath.size(); i++) 
-								for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) 
-										mddNodePath.add((int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j) + ocl.getBoundsNoDups()/2, tempNodePath.get(i));
-						else
-							for (int i=0; i<ocl.getBoundsNoDups();i++)
-								mddNodePath.add(i, tempNodePath.get(i));
-
-
-					} else {
-						
-						// Functionally equivalent to an OR
-						tempNodePath.add(0, 0);
-						// For every constraint child, builds the recursions necessary to create the or structure
-						for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
-							for (int j=0; j < Math.pow(2, i); j++) {
-								System.out.println("Test5");
-								if (j==0)
-									tempNodePath.add((int) Math.pow(2, i)+j, getStartingNode(OrderedChildrenList.get(i),destination));
-								else
-									tempNodePath.add((int) Math.pow(2, i)+j, getStartingNode(OrderedChildrenList.get(i),tempNodePath.get((int) ((Math.pow(2, i)+j) - Math.pow(2, i)))));
-							}
-						// For every feature child, duplicates the paths leading to each node
-						if ((ocl.getFeatureChildrenNumber()) > 0)
-							for (int i=0; i < tempNodePath.size(); i++) 
-								for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) 
-									if (i==0 && j!=0) 
-										mddNodePath.add((int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j), 1);
-									else 
-										mddNodePath.add((int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j), tempNodePath.get(i));
-						
-					}
-					System.out.println("Current Node is AND, named: "+ ocl.getName());
-					
-				break;
-				case ("or"):
-					tempNodePath = new Vector<Integer>();
-					tempNodePath.add(0,0);
-					// For every constraint child, builds the recursions necessary to create the or structure
-					for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
-						for (int j=0; j < Math.pow(2, i); j++) 
-							if (j==0) {
-								tempNodePath.add((int) Math.pow(2, i)+j, getStartingNode(OrderedChildrenList.get(i),destination));
-							} else {
-								tempNodePath.add((int) Math.pow(2, i)+j, getStartingNode(OrderedChildrenList.get(i),tempNodePath.get((int) ((Math.pow(2, i)+j) - Math.pow(2, i)))));
-							}
-								
-					// For every feature child, duplicates the paths leading to each node
-					if ((ocl.getFeatureChildrenNumber()) > 0)
-						for (int i=0; i < tempNodePath.size(); i++) 
-							for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) 
-								if (i==0 && j!=0) 
-									mddNodePath.add((int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j), 1);
-								else 
-									mddNodePath.add((int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j), tempNodePath.get(i));
-
-					System.out.println("Current Node is OR, named: "+ ocl.getName());
-				break;
-				case ("alt"):
-					mddNodePath.add(0);
-					if (ocl.getTotalChildrenNumber() > 1) {
-						// For every constraint, one path that leads to that constraint
-						for (int i=1; i < ocl.getConstraintChildrenNumber(); i++ ) {
-							System.out.println("New Node Going in");
-							mddNodePath.add(i, getStartingNode(OrderedChildrenList.get(i), destination));
-						}
-					
-						// For every feature, one path that leads to T
-						for (int i=1; i < ocl.getFeatureChildrenNumber(); i++ ) {
-							System.out.println("New Node Going in, array is: I=" + i + " CCN="+ocl.getConstraintChildrenNumber() +" and array size is " + mddNodePath.size());
-							System.out.println("OrderedChildrenList Length: "+OrderedChildrenList.size());
-							mddNodePath.add(i + ocl.getConstraintChildrenNumber(),1);
-						}
-					} else {
-						// Weird edge case where the constraint has just one child
-						if (ocl.getConstraintChildrenNumber() > 0) {
-							//If the child is a constraint, it goes to it
-							mddNodePath.add(1,getStartingNode(OrderedChildrenList.get(0), destination));
-						} else {
-							// If the child is a feature, it goes to true
-							mddNodePath.add(1,1);
-						}
+			// Non Leaf Nodes
+			
+			// ALT node
+			if (ocl.getType() == "alt") {
+				mddNodePath.add(0);
+				if (ocl.getTotalChildrenNumber() > 1) {
+					// For every constraint, one path that leads to that constraint
+					for (int i=0; i < ocl.getConstraintChildrenNumber(); i++ ) {
+						System.out.println("New Node Going in");
+						mddNodePath.add( getNode(OrderedChildrenList.get(i), destination));
 					}
 				
-					System.out.println("Current Node is ALT, named: "+ ocl.getName());
-				break;
+					// For every feature, one path that leads to T
+					for (int i=0; i < ocl.getFeatureChildrenNumber(); i++ ) {
+						System.out.println("New Node Going in, array is: I=" + i + " CCN="+ocl.getConstraintChildrenNumber() +" and array size is " + mddNodePath.size());
+						System.out.println("OrderedChildrenList Length: "+OrderedChildrenList.size());
+						mddNodePath.add(destination);
+					}
+				} else {
+					// Weird edge case where the constraint has just one child
+					if (ocl.getConstraintChildrenNumber() > 0) {
+						//If the child is a constraint, it goes to it
+						mddNodePath.add(1,getNode(OrderedChildrenList.get(0), destination));
+					} else {
+						// If the child is a feature, it goes to true
+						mddNodePath.add(1,destination);
+					}
+				}
+			
+				System.out.println("Current Node is ALT, named: "+ ocl.getName());
 			}
-			System.out.println("Switch is OVER");
+			
+			// AND node with mandatory part
+			if ( ocl.getType() == "and" && (ocl.getMandatoryConstraintChildrenNumber() > 0 || ocl.getMandatoryFeatureChildrenNumber() > 0)) {
+				int nextNode = destination;
+				
+				// PART 1.1: Mandatory constraints in series
+				// For every mandatory constraint child, build the "forced" part of the tree.
+				// With MCCN == 0, nextNode is destination, thus making the following OR section correct.
+				for (int i = 0; i < ocl.getMandatoryConstraintChildrenNumber(); i++) {
+						nextNode = getNode(OrderedChildrenList.get(i), nextNode );
+				}
+				
+				// PART 1.2: First path leads to the mandatory part (in case it doesn't exist, to destination)
+				tempNodePath.add(nextNode);
+				
+				
+				// PART 2: Mandatory not chosen paths lead to zero
+				// Set the first half of paths to zero, as they're the equivalent of saying one of the mandatory nodes is not selected.
+				// Removed, as AND constraints with lots of children would've meant million of paths leading to zero
+				// for (int i=0; i < ocl.getBoundsNoDups()/2 ;i++)
+					// mddNodePath.add(i, 0);
+				
+				// PART 3: Optional constraints go in an OR structure
+				// For every optional constraint child, builds the recursions necessary to create the OR structure
+				// The optional constraint children being after the mandatory ones, they are indexed using the MCCN
+				for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
+					for (int j=0; j < Math.pow(2, i); j++) 
+						if (j==0)
+							tempNodePath.add(getNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),nextNode));
+						else
+							tempNodePath.add(getNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),tempNodePath.get(j) ));
+						
+				if (ocl.getConstraintChildrenNumber() == 0 && ocl.getFeatureChildrenNumber() == 0)
+					tempNodePath.add(0,0);
+				
+				// PART 4: Building final paths array, duplicating based on optional features 
+				// For every optional feature child, duplicates the paths leading to each node and builds the actual path
+				for (int i=0; i < tempNodePath.size(); i++) 
+					for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) {
+						mddNodePath.add( tempNodePath.get(i));
+						
+						if (mddNodePath.size() == 64 && ocl.getDups() > 1) {
+							mddNodePath.add(0);
+							int[] helper = new int[65];
+	   						// Turns the Vector<Integer> that has been filled into an int[]
+	   						for (int k=0; k<65; k++)
+	   							helper[k] = mddNodePath.get(k);
+							// After reaching 65 paths, creates a bottom level node (for MDD ordering reasons)
+		   					mddNodePathMatrix.get(0).add(duplicatedVar[duplicatedVar.length-1].getNode(helper));
+		   					mddNodePath.clear();
+						}
+
+		   				// Creation of higher level nodes paths (whenever a level reaches bounds, we pack it in the higher level
+		   				for (int k = 1; k<ocl.getDups()-1; k++) {
+		   					if (mddNodePathMatrix.get(k-1).size() == 64) {
+		   						int[] helper = new int[64];
+		   						// Turns the Vector<Integer> that has been filled into an int[]
+		   						for (int l=0; l<64; l++)
+		   							helper[l] = mddNodePathMatrix.get(k-1).get(l);
+		   						
+		   						mddNodePathMatrix.get(k).add(duplicatedVar[ (duplicatedVar.length-1) - k ].getNode(helper));
+			   					mddNodePathMatrix.get(k-1).clear();
+		   					}
+		   				}
+					}
+			
+				if (ocl.getDups() > 1) {
+   					mddNodePath.clear();
+		   			mddNodePath = mddNodePathMatrix.get(ocl.getDups()-2);
+				}
+			} 
+			
+			// OR node or equivalent AND node without mandatory children
+			if ( ocl.getType() == "or" || ( ocl.getType() == "and" && ocl.getMandatoryConstraintChildrenNumber() == 0 && ocl.getMandatoryFeatureChildrenNumber() == 0)) {
+				tempNodePath.add(0,0);
+				// For every constraint child, builds the recursions necessary to create the or structure
+				for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
+					for (int j=0; j < Math.pow(2, i); j++) 
+						if (j==0) {
+							tempNodePath.add(getNode(OrderedChildrenList.get(i),destination));
+						} else {
+							tempNodePath.add(getNode(OrderedChildrenList.get(i),tempNodePath.get(j) ));
+						}
+
+				// For every feature child, duplicates the paths leading to each node
+				for (int i=0; i < tempNodePath.size(); i++) 
+					for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) {
+						if (i==0 && j!=0) {
+							mddNodePath.add(destination);
+						} else {
+							mddNodePath.add(tempNodePath.get(i) );
+						}
+						
+						// Code that splits the path in the duplicated variables
+						if (mddNodePath.size() == 64 && ocl.getDups() > 1) {
+							mddNodePath.add(0);
+							int[] helper = new int[65];
+	   						// Turns the Vector<Integer> that has been filled into an int[]
+	   						for (int k=0; k<65; k++)
+	   							helper[k] = mddNodePath.get(k);
+							// After reaching 65 paths, creates a bottom level node (for MDD ordering reasons)
+		   					mddNodePathMatrix.get(0).add(duplicatedVar[duplicatedVar.length-1].getNode(helper));
+		   					mddNodePath.clear();
+						}
+
+		   				// Creation of higher level nodes paths (whenever a level reaches bounds, we pack it in the higher level
+		   				for (int k = 1; k<ocl.getDups()-1; k++) {
+		   					if (mddNodePathMatrix.get(k-1).size() == 64) {
+		   						int[] helper = new int[64];
+		   						// Turns the Vector<Integer> that has been filled into an int[]
+		   						for (int l=0; l<64; l++)
+		   							helper[l] = mddNodePathMatrix.get(k-1).get(l);
+		   						
+		   						mddNodePathMatrix.get(k).add(duplicatedVar[ (duplicatedVar.length-1) - k ].getNode(helper));
+			   					mddNodePathMatrix.get(k-1).clear();
+		   					}
+		   				}
+					}
+
+				if (ocl.getDups() > 1) {
+   					mddNodePath.clear();
+		   			mddNodePath = mddNodePathMatrix.get(ocl.getDups()-2);
+				}
+			}
 		}
 		
     	
 
 		System.out.println("ChildNodesNum#: "+ ocl.getTotalChildrenNumber());
 		System.out.println("Dups#: "+ ocl.getDups());
-		
-		int newNode = 1;
-
 		System.out.println("Node Name: "+ ocl.getName());
 		System.out.println("MDD Node Path#: ");
 		
+		// If there are no duplications, the creation of the new node can be grouped for all cases.
+		// With duplications, the creation of the nodes has to be managed by each possibility:
+		// AND or OR leaf, ALT leaf, AND non-leaf, OR non-leaf and ALT non-leaf.
 		
+		System.out.println("Mdd size: "+mddNodePath.size());
 		int[] finalPath = new int[mddNodePath.size()];
 		for (int i=0;i<mddNodePath.size();i++) {
 			finalPath[i] = mddNodePath.get(i);
@@ -315,228 +420,12 @@ public class MDDConv {
 			System.out.println("i: "+ i + ", Dest: " + finalPath[i]);
 		}
 		
-		ExtendedSemaphore.OPERATION_SEMAPHORE.acquire();
+		// Only instance of the creation of the newNode. Each section outputs a mddNodePath list with the list for the top level variable.
 		newNode = var.getNode(finalPath);
-		ExtendedSemaphore.OPERATION_SEMAPHORE.release();
+		
 
 		System.out.println("New Node: "+ newNode);
 		return newNode;
 	}
     
-    
-    /*
-    // Old getStartingNode
-	public int getStartingNode(Node currentNode, int destination) throws InterruptedException {
-		
-		if (manager == null)
-			throw new RuntimeException(
-					"You need to create an MDDManager with getMDD() before obtaining the starting node");
-
-		NodeManager ocl = new NodeManager(currentNode);
-		String varName = ocl.getName()+"Var";
-		System.out.println("var: "+varName+0);
-		Vector<Node> OrderedChildrenList = ocl.getOrderedConstraintChildrenList();
-		
-		MDDVariable var = manager.getVariableForKey(varName+0);
-		
-		// TODO: Manage duplications, check that bounds calculations correspond on both sides (variable creation and node creation)
-		Vector<Integer> mddNodePath2 = new Vector<Integer>();
-		
-		int[] mddNodePath = new int[var.nbval];
-		mddNodePath[0] = 0;
-		int[] tempNodePath;
-
-		// Only check children if we know there's more constraints downstream
-		if (ocl.isMDDLeaf()) {  
-	    	switch (ocl.getType()) {
-		    	// Depending on how many mandatory features
-		    	case ("and"):
-		    	case ("or"):
-		    	case ("alt"):
-		    		if (ocl.getDups() == 1) {
-		    			System.out.println("var: "+varName+0);
-		    			// Cycles through all the possible values obtainable by the variable.
-		    			mddNodePath[0]=0;
-		    			for (int j=1; j < var.nbval;j++) 
-		    				mddNodePath[j]=destination;
-		    			
-		    		} else {
-		    			// When the variable has been duplicated.
-			   			//for (int i=0; i<dups; i++) {
-				    	//    	this.varCount++;
-		    			//}
-	    			}
-	    		break;
-			}
-			
-		}  else {
-
-			switch ( ocl.getType() ) {
-				case ("and"):
-
-					int nextNode = destination;
-					
-					if (ocl.getMandatoryChildrenNumber() > 0)
-						tempNodePath = new int[(int) Math.pow(2, (ocl.getConstraintChildrenNumber() + 1) )];
-					else 
-						tempNodePath = new int[(int) Math.pow(2, ocl.getConstraintChildrenNumber() )];
-					
-					
-					if (ocl.getMandatoryConstraintChildrenNumber() > 0 || ocl.getMandatoryFeatureChildrenNumber() > 0) {
-						// AND component followed by the OR component
-						
-						// PART 1.1: Mandatory constraints in series
-						// For every mandatory constraint child, build the "forced" part of the tree.
-						// With MCCN == 0, nextNode is destination, thus making the following OR section correct.
-						for (int i = 0; i < ocl.getMandatoryConstraintChildrenNumber(); i++) {
-							if (i == 0)
-								nextNode = getStartingNode(OrderedChildrenList.get(i), destination);
-							else
-								nextNode = getStartingNode(OrderedChildrenList.get(i), nextNode );
-						}
-						
-						// PART 1.2: Mandatory paths lead to one
-						// In the specific situation where there are no mandatory constraints and at least one mandatory feature,
-						// the path that would skip the optional constraints goes directly to 1 (no further constraints downstream)
-						if (ocl.getMandatoryConstraintChildrenNumber() == 0 && ocl.getMandatoryFeatureChildrenNumber() > 0) 
-							tempNodePath[0] = 1;
-						else
-							tempNodePath[0] = nextNode;
-						
-						// PART 2: Mandatory not chosen paths lead to zero
-						// Set the first half of paths to zero, as they're the equivalent of saying one of the mandatory nodes is not selected.
-						// TODO: Could be eliminated, granting one more optional variable to be used by a single non-duplicated AND node.
-						for (int i=0; i<mddNodePath.length/2;i++)
-							mddNodePath[i]=0;
-						
-						// PART 3: Optional constraints go in an OR structure
-						// For every optional constraint child, builds the recursions necessary to create the OR structure
-						// The optional constraint children being after the mandatory ones, they are indexed using the MCCN
-						for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
-							for (int j=0; j < Math.pow(2, i); j++) 
-								if (j==0)
-									tempNodePath[(int) Math.pow(2, i)+j] = getStartingNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),nextNode);
-								else
-									tempNodePath[(int) Math.pow(2, i)+j] = getStartingNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),tempNodePath[(int) ((Math.pow(2, i)+j) - Math.pow(2, i))]);
-						
-						// PART 4: Building final paths array, duplicating based on optional features 
-						// For every optional feature child, duplicates the paths leading to each node and builds the actual path
-						if ((ocl.getFeatureChildrenNumber()) > 0)
-							for (int i=0; i < tempNodePath.length; i++) 
-								for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) 
-										mddNodePath [ (int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j) + mddNodePath.length/2] = tempNodePath[i];
-						else
-							for (int i=mddNodePath.length/2; i<mddNodePath.length;i++)
-								mddNodePath[i] = tempNodePath[i-mddNodePath.length/2];
-								
-
-					} else {
-						
-						// Functionally equivalent to an OR
-						tempNodePath[0] = 0;
-						// For every constraint child, builds the recursions necessary to create the or structure
-						for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
-							for (int j=0; j < Math.pow(2, i); j++) {
-								System.out.println("Test5");
-								if (j==0)
-									tempNodePath[(int) Math.pow(2, i)+j] = getStartingNode(OrderedChildrenList.get(i),destination);
-								else
-									tempNodePath[(int) Math.pow(2, i)+j] = getStartingNode(OrderedChildrenList.get(i),tempNodePath[(int) ((Math.pow(2, i)+j) - Math.pow(2, i))]);
-							}
-						// For every feature child, duplicates the paths leading to each node
-						if ((ocl.getFeatureChildrenNumber()) > 0)
-							for (int i=0; i < tempNodePath.length; i++) 
-								for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) 
-									if (i==0 && j!=0) 
-										mddNodePath [(int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j)] = 1;
-									else 
-										mddNodePath [ (int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j)] = tempNodePath[i];
-						
-					}
-					System.out.println("Current Node is AND, named: "+ ocl.getName());
-					
-				break;
-				case ("or"):
-					tempNodePath = new int[(int) Math.pow(2,ocl.getConstraintChildrenNumber())];
-					tempNodePath[0] = 0;
-					// For every constraint child, builds the recursions necessary to create the or structure
-					for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
-						for (int j=0; j < Math.pow(2, i); j++) 
-							if (j==0)
-								tempNodePath[(int) Math.pow(2, i)+j] = getStartingNode(OrderedChildrenList.get(i),destination);
-							else
-								tempNodePath[(int) Math.pow(2, i)+j] = getStartingNode(OrderedChildrenList.get(i),tempNodePath[(int) ((Math.pow(2, i)+j) - Math.pow(2, i))]);
-					
-					// For every feature child, duplicates the paths leading to each node
-					if ((ocl.getFeatureChildrenNumber()) > 0)
-						for (int i=0; i < tempNodePath.length; i++) 
-							for (int j=0; j < Math.pow(2,ocl.getFeatureChildrenNumber()); j++) 
-								if (i==0 && j!=0) 
-									mddNodePath [(int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j)] = 1;
-								else 
-									mddNodePath [ (int) (i * Math.pow(2,ocl.getFeatureChildrenNumber()) + j)] = tempNodePath[i];
-
-					System.out.println("Current Node is OR, named: "+ ocl.getName());
-				break;
-				case ("alt"):
-					if (ocl.getTotalChildrenNumber() > 1) {
-						// For every constraint, one path that leads to that constraint
-						for (int i=1; i < ocl.getConstraintChildrenNumber(); i++ ) {
-							System.out.println("New Node Going in");
-							mddNodePath[i] = getStartingNode(OrderedChildrenList.get(i), destination);
-						}
-					
-						// For every feature, one path that leads to T
-						for (int i=1; i < ocl.getFeatureChildrenNumber(); i++ ) {
-							System.out.println("New Node Going in, array is: I=" + i + " CCN="+ocl.getConstraintChildrenNumber() +" and array size is " + mddNodePath.length);
-							System.out.println("OrderedChildrenList Length: "+OrderedChildrenList.size());
-							mddNodePath[i + ocl.getConstraintChildrenNumber()] = 1;
-						}
-					} else {
-						// Weird edge case where the constraint has just one child
-						if (ocl.getConstraintChildrenNumber() > 0) {
-							//If the child is a constraint, it goes to it
-							mddNodePath[1] = getStartingNode(OrderedChildrenList.get(0), destination);
-						} else {
-							// If the child is a feature, it goes to true
-							mddNodePath[1] = 1;
-						}
-					}
-				
-					System.out.println("Current Node is ALT, named: "+ ocl.getName());
-				break;
-			}
-			System.out.println("Switch is OVER");
-		}
-		
-    	
-
-		System.out.println("ChildNodesNum#: "+ ocl.getTotalChildrenNumber());
-		System.out.println("Dups#: "+ ocl.getDups());
-		
-		int newNode = 1;
-
-		System.out.println("Node Name: "+ ocl.getName());
-		System.out.println("MDD Node Path#: ");
-		for (int i=0;i<mddNodePath.length;i++)
-			System.out.println("i: "+ i + ", Dest: " +mddNodePath[i]);
-
-		System.out.println("Var Name: "+ var.key);
-		ExtendedSemaphore.OPERATION_SEMAPHORE.acquire();
-		newNode = var.getNode(mddNodePath);
-		ExtendedSemaphore.OPERATION_SEMAPHORE.release();
-
-		System.out.println("New Node: "+ newNode);
-		return newNode;
-	}  */
-	/*
-	private int[] getChildrenList(int dim, int nextNode) {
-		int[] childrenList = new int[dim];
-		
-		for (int i=0; i<dim; i++) {
-			childrenList[i] = nextNode;
-		}
-		
-		return childrenList;
-	}*/
 }

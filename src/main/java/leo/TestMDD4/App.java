@@ -41,7 +41,7 @@ public class App
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	try {   
-	    	String modelName = "gplSmall";
+	    	String modelName = "gplSmallTest";
 	   		File file = new File("featureModels/"+modelName+"Model.xml");  
 	   		DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();  
 	   		
@@ -62,11 +62,10 @@ public class App
     		// Displays the variables currently generated
     		conv.displayVars();
     		
-    		int baseMDD = conv.getStartingNode(nodeList.item(0).getChildNodes().item(1), 1);
+    		int baseMDD = conv.getNode(nodeList.item(0).getChildNodes().item(1), 1);
     		
     		MDDManager manager = conv.returnManager();
-    		System.out.println(manager.dumpMDD(baseMDD).toString());  
-
+    		// System.out.println(manager.dumpMDD(baseMDD).toString());  
 
        		System.out.print("\nBefore new PathSearcher\n");
     		PathSearcher searcher = new PathSearcher(manager, 1);
@@ -78,18 +77,18 @@ public class App
 
        		System.out.print("Paths #:\n " + nPaths + "\n\n");
        		
-    		
+       		
 	   		// ******************************************************************************************
 	   		
-	   		
+
 	   		
     		/*
     		mddTest();
     		
 	   		MDDManager mgr = conv.returnManager();
-	   		FMtoCTWtoMediciMDDGen(modelName);
     		System.out.println("Features # : " + countFeature + "\nAnd: " + countAnd + "\nAlt: " + countAlt + "\nOr: " + countOr);
     		System.in.read();
+	   		FMtoCTWtoMediciMDDGen(modelName);
 
    			countFeature.set(0);
    			// Contains a single item node list for the constraints node  

@@ -11,15 +11,18 @@
 						</and>
 					</alt>
 					<or abstract="true" mandatory="true" name="Alg">
-						<feature name="Number"/>
-						<feature name="Connected"/>
 						<and abstract="true" name="StrongConnect">
 							<feature mandatory="true" name="Transpose"/>
 							<feature mandatory="true" name="StronglyConnected"/>
 						</and>
-						<feature name="Cycle"/>
-						<feature name="MSTPrim"/>
-						<feature name="MSTKruskal"/>
+						<and abstract="true" name="StrongConnect">
+							<feature mandatory="true" name="Transpose"/>
+							<feature mandatory="true" name="StronglyConnected"/>
+						</and>
+						<and abstract="true" name="StrongConnect">
+							<feature mandatory="true" name="Transpose"/>
+							<feature mandatory="true" name="StronglyConnected"/>
+						</and>
 					</or>
 					<alt abstract="true" name="Src">
 						<feature name="BFS"/>

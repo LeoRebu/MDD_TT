@@ -117,7 +117,11 @@ public class NodeManager {
 	public int getDups() {
 		if (currentNode.getNodeName() == "alt")
 			// maths should be good now
-			return (int) Math.ceil(this.getTotalChildrenNumber()/63.0);
+			if (this.getTotalChildrenNumber() < 64)
+				return 1;
+			else
+				// It would require 4000 children to go over 2 duplications
+				return 2;
 		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
 			return (int) 1;
 		else			
@@ -131,7 +135,11 @@ public class NodeManager {
 		// Boundary corresponds to the # of child nodes mod 64. 
 		// 63 -> 64 | 64 -> 2 | 65 -> 3
 		if (currentNode.getNodeName() == "alt")
-			return (byte) ( this.getTotalChildrenNumber() - ( 63*(this.getDups()-1) ) + 1 ) ;
+			if (this.getTotalChildrenNumber() < 64)
+				return (byte) ( this.getTotalChildrenNumber() + 1 ) ;
+			else
+				return (byte) ( (byte) Math.floor(this.getBoundsNoDups()/64.0) + 1) ;
+				
 		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
 			return (byte) 2;
 		else
@@ -140,14 +148,14 @@ public class NodeManager {
 			return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) );
 	}
 
-	public byte getBoundsNoDups() {
+	public double getBoundsNoDups() {
 		// Used for calculation in duplicated variables
 		if (currentNode.getNodeName() == "alt")
-			return (byte) ( this.getTotalChildrenNumber() + 1 ) ;
+			return (double) ( this.getTotalChildrenNumber() + 1 ) ;
 		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
-			return (byte) 2;
-		else
-			return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) );
+			return (double) 2;
+		else 
+			return (double) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) );
 	}
 
 	public Vector<Node> getOrderedConstraintChildrenList() {
