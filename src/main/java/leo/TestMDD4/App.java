@@ -41,7 +41,7 @@ public class App
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	try {   
-	    	String modelName = "eshop";
+	    	String modelName = "waterloo";
 	   		File file = new File("featureModels/"+modelName+"Model.xml");  
 	   		DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();  
 	   		
@@ -50,32 +50,42 @@ public class App
 	   		System.out.println("Root element: "+ document.getDocumentElement().getNodeName());  
 	   		// Contains a single item node list for the struct node
 	   		NodeList nodeList = document.getElementsByTagName("struct");
+	   		Node constraintsNode = document.getElementsByTagName("constraints").item(0);
 	  			   		
 	   		Vector<Node> root = new Vector<Node>();
 	   		root.add(nodeList.item(0).getChildNodes().item(1));
 	   		
+	   		
+	   		// FMtoCTWtoMediciMDDGen(modelName);
+	   		
 	   		MDDConv conv = new MDDConv();
-    		if (nodeList.item(0).hasChildNodes()) {  
-    			// Generates the variables for the MDD
-    			conv.variablesGenerator(root); 
-    		}  
+    		// Generates the variables for the MDD
+    		conv.variablesGenerator(root); 
     		// Displays the variables currently generated
     		conv.displayVars();
-    		
-    		int baseMDD = conv.getNode(nodeList.item(0).getChildNodes().item(1), 1);
+    		// Generates the MDD with the inline constraints
+    		int baseMDD = conv.getNode(root.get(0), 1);
     		
     		MDDManager manager = conv.returnManager();
-    		// System.out.println(manager.dumpMDD(baseMDD).toString());  
-
-       		System.out.print("\nBefore new PathSearcher\n");
     		PathSearcher searcher = new PathSearcher(manager, 1);
-
-       		System.out.print("\nBefore searcher setNode. \nBaseMDD: "+baseMDD);
     		searcher.setNode(baseMDD);
        		System.out.print("\nBefore countPaths\n");
+    		searcher.getPath();
     		int nPaths = searcher.countPaths();
-
        		System.out.print("Paths #:\n " + nPaths + "\n\n");
+    		
+    		baseMDD = conv.applyCTConstraints(baseMDD, root.get(0), constraintsNode);
+
+    		System.out.println("After CTConstraints");  
+    		manager = conv.returnManager();
+    		System.out.println("Before path searcher");  
+    		searcher = new PathSearcher(manager, 1);
+    		searcher.setNode(baseMDD);
+    		System.out.println("After setNode");  
+    		nPaths = searcher.countPaths();
+       		System.out.print("After Constraints Paths #:\n " + nPaths + "\n\n");
+       		
+       		// System.out.print("\nNode name: " + conv.findNodeParent(root.get(0), "Undirected").getName() );
        		
        		
 	   		// ******************************************************************************************
@@ -88,7 +98,6 @@ public class App
 	   		MDDManager mgr = conv.returnManager();
     		System.out.println("Features # : " + countFeature + "\nAnd: " + countAnd + "\nAlt: " + countAlt + "\nOr: " + countOr);
     		System.in.read();
-	   		FMtoCTWtoMediciMDDGen(modelName);
 
    			countFeature.set(0);
    			// Contains a single item node list for the constraints node  
@@ -103,7 +112,7 @@ public class App
     		
     		*/
    		}   
-   		catch (Exception e) {  
+   		catch (Exception e) {   
    			System.out.println(e.getMessage());  
    		}  
     }

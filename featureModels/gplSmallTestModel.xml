@@ -8,17 +8,14 @@
 						<and abstract="true" name="DriverProg">
 							<feature mandatory="true" name="Prog"/>
 							<feature mandatory="true" name="Benchmark"/>
-							<feature mandatory="true" name="Benchmark"/>
-							<feature name="Connected"/>
-							<feature name="Connected"/>	
+							<feature mandatory="true" name="Benchmark2"/>
+							<feature name="Connected3"/>
+							<feature name="Connected4"/>	
 						</and>
 					</alt>
 					<or abstract="true" mandatory="true" name="Alg">
 						<feature name="Number"/>
-						<feature name="Connected"/>
-						<feature name="Connected"/>
-						<feature name="Connected"/>
-						<feature name="Connected"/>
+						<feature name="Connected2"/>
 						<feature name="Connected"/>
 					</or>
 					<alt abstract="true" mandatory="true" name="Wgt">
@@ -28,7 +25,7 @@
 					<alt abstract="true" mandatory="true" name="Gtp">
 						<feature name="Directed"/>
 						<feature name="Undirected"/>
-						<feature name="Directed"/>
+						<feature name="Directed2"/>
 					</alt>	
 					<alt abstract="true" name="Src">
 						<feature name="BFS"/>
@@ -42,7 +39,15 @@
 			</alt>
 		</struct>
 		<constraints>
-			
+			<rule>
+				<imp>
+					<var>Number</var>
+					<conj>
+						<var>Gtp</var>
+						<var>Src</var>
+					</conj>
+				</imp>
+			</rule>
 		</constraints>
 		<calculations Auto="true" Constraints="true" Features="true" Redundant="true" Tautology="true"/>
 		<comments>

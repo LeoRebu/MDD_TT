@@ -33,7 +33,7 @@ public class NodeManager {
 		
 		
 		NodeList children = currentNode.getChildNodes();
-    	// For each child, check whether any child is not a feature
+    	// Collect information on each child
     	for(int i = 0; i < children.getLength(); i++) {
     		Boolean currentMandatory = false;
     		// Only consider mandatory children for AND constraints
@@ -71,6 +71,20 @@ public class NodeManager {
 	    	}
     	}
     	
+	}
+	
+	// Returns the position of the child. -1 if not found.
+	public int getChildrenPosition(String name) {
+		NodeList children = currentNode.getChildNodes();
+    	// For each child, check whether any child is not a feature
+    	for(int i = 0; i < children.getLength(); i++) {
+    		// Only consider mandatory children for AND constraints
+			if (children.item(i).getAttributes() != null)
+				if ( children.item(i).getAttributes().getNamedItem("name").getNodeValue().equals(name)) {
+					return 1;
+				}
+    	}
+    	return -1;
 	}
 	
 	public Boolean isMDDLeaf() {
@@ -129,6 +143,7 @@ public class NodeManager {
 			// due to the fact there's a single path leading to T from all mandatory features. Doesn't impact OR (no mandatory children)
 			return (int) Math.ceil( (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) / 6.0);
 	}
+	
 	
 	// TODO: add extra value to get around the semplification that'd flatten nodes that are all 1s
 	public byte getBounds() {

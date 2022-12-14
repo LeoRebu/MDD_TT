@@ -6,6 +6,8 @@ import org.colomoto.mddlib.MDDManager;
 import org.colomoto.mddlib.MDDManagerFactory;
 import org.colomoto.mddlib.MDDVariable;
 import org.colomoto.mddlib.MDDVariableFactory;
+import org.colomoto.mddlib.operators.MDDBaseOperators;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -16,26 +18,32 @@ public class MDDConv {
 
 	MDDVariableFactory mvf;
 	MDDManager manager;
-	int varCount;
 
 	public MDDConv () {
 		this.manager = null;
 		this.mvf = new MDDVariableFactory();
-		varCount = 0;
+		// varCount = 0;
 	}
 	
 	public MDDManager returnManager() {
 		return manager;
 	}
 
-
-    // TODO: Completely implement NodeManager into variable generation, including children ordering
+	/**
+	 * Recursive procedure to generate all the variables for the MDD
+	 * 
+	 * @param nodes: Vector of the nodes to be examined. Starts with the root
+	 */
     public void variablesGenerator (Vector<Node> nodes) {
 		
-    	for (int count = 0; count < nodes.size(); count++) {  
+    	for (int count = nodes.size()-1; count >= 0; count--) {  
    			NodeManager ocl = new NodeManager(nodes.get(count));
+   			// Base of the variable's name
     		String varName = ocl.getName() + "Var";
     			
+    		
+    		// If a variable isn't duplicated, a 0 is added to its name.
+    		// If duplicated, the duplications have 1...n added to their name depending on their position in the duplication's hierarchy.
     		switch (ocl.getType()) {
 		    	// Add as variable
 		    	case ("and"):
@@ -54,7 +62,6 @@ public class MDDConv {
 		   				else
 			    			// 64 for variables, 65th for a zero to prevent flattening of node
 		   					mvf.add(varName + i, (byte)64 );
-			        	this.varCount++;
 			    	}
 		    	break;
 		    	// Add as variable
@@ -67,17 +74,15 @@ public class MDDConv {
 			   				else 
 				    			// 63 for variables, 64th for a zero to prevent flattening of node
 			   					mvf.add(varName + i, (byte)64 );
-			   				this.varCount++;
 			   			}
 		    		} else {
 	    				mvf.add(varName + 0, (byte)2 );
-		    			this.varCount++;
 		    		}
 		    			
 		    	break;
     		}
 
-    		// Only check children if we know there's more constraints downstream
+    		// Only check children if the current node has constraint children
 	    	if (!ocl.isMDDLeaf()) {  
 		    	// Recursive call if the node has child nodes  
 		    	variablesGenerator(ocl.getOrderedConstraintChildrenList());  
@@ -86,23 +91,137 @@ public class MDDConv {
     	}
     }
     
+	/**
+	 * Debug function to make sure the variables are generated correctly. Prints out the variables and their bounds
+	 * 
+	 */
     public void displayVars() {
-
-		System.out.println("B4 factory\n");
 		this.manager = MDDManagerFactory.getManager(mvf, 2); 
 		
-		// Build the MDD structure
+		// Fetches the variables
 		MDDVariable[] vars = manager.getAllVariables();
-		System.out.println("B4 vars\n");
-		System.out.println("Var Count: "+ this.varCount);
-		System.out.println("Var Count: "+ vars.length);
-		// for (int i = 0; i< vars.length; i++) {
-		for (int i = 0; i< varCount; i++) {
-			System.out.println("Var Name: " + vars[i].key.toString()+" \t|| Var Bounds: "+ vars[i].nbval); 
+		System.out.println("Variables Count: "+ vars.length);
+		for (int i = 0; i< vars.length; i++) {
+			System.out.println("Var " + vars[i].key.toString()+" -> B="+ vars[i].nbval); 
 		}
     }
     
+    
 
+	/**
+	 * Recursive function that returns the NodeManager of the node with the given named node among his children
+	 * 
+	 * @param nodes: Vector of the nodes to be examined. Starts with the root
+	 * @param name: the name of the node we're looking the parent of
+	 * @return NodeManager of the node with the given named node among his children, null if not found
+	 */
+    public NodeManager findNodeParent (Node root, String name) {
+
+		NodeManager rootNM = new NodeManager(root);
+		
+		if ( rootNM.getChildrenPosition(name) > 0 )
+			return rootNM;
+
+    	if (!rootNM.isMDDLeaf()) {  
+	    	for (Node n : rootNM.getOrderedConstraintChildrenList()) {  
+		    	// Recursive call if the node has child nodes  
+		    	NodeManager node = findNodeParent(n, name);   
+		    	if (node != null)
+		    		return node;
+		    }  
+	    }
+    	return null;
+    }
+    
+    public int applyCTConstraints(int baseMDD, Node root, Node constraints) {
+
+   		// System.out.print("\nNode name: " + findNodeParent(root, "DirectedWithNeighbors").getName() );
+   		
+    	NodeList constraintList = constraints.getChildNodes();
+    	
+    	for (int count = 0; count < constraintList.getLength(); count++) {  
+    		Node elemNode = constraintList.item(count);  
+    		if (elemNode.getNodeType() == Node.ELEMENT_NODE) {  
+	    		// get node name and value  
+	    		//System.out.println("Node Content =" + elemNode.getTextContent());  
+	    		switch (elemNode.getNodeName()) {
+	    		case ("rule"): 
+	    			// New cross tree constraint
+	    			break;
+	    		}
+	    	}  
+    	} 
+    	
+    	// Cycle = TRUE
+    	// Pos 4
+    	MDDVariable var;
+    	int newNode;
+    	
+    	/*
+    	// !Connected2
+    	var = manager.getVariableForKey("DriverProgVar0");
+    	newNode = var.getNode(new int[]{0,1,1,0,0});
+    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
+
+    	// !Directed
+    	var = manager.getVariableForKey("GtpVar0");
+    	newNode = var.getNode(new int[]{0,0,1,1});
+    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
+    	*/
+    	/*
+    	// Connected2
+    	var = manager.getVariableForKey("DriverProgVar0");
+    	newNode = var.getNode(new int[]{0,0,0,1,1});
+    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
+		*/
+    	
+    	/*
+    	// !Directed or Weighted METHOD 1
+    	var = manager.getVariableForKey("WgtVar0");
+    	int wgtNode = var.getNode(new int[]{1,1,0});
+    			
+    	var = manager.getVariableForKey("GtpVar0");
+    	newNode = var.getNode(new int[]{0,wgtNode,1,1});
+    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
+    	*/
+    	
+    	/*
+    	// !Directed or Weighted METHOD 2 (correct)
+    	var = manager.getVariableForKey("WgtVar0");
+    	int wgtNode = var.getNode(new int[]{1,1,0});
+    	var = manager.getVariableForKey("GtpVar0");
+    	newNode = var.getNode(new int[]{0,0,1,1});
+    	newNode = MDDBaseOperators.OR.combine(manager, newNode, wgtNode);
+    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
+    	*/
+    	
+    	// !Number or (Gtp and Src) 
+    	var = manager.getVariableForKey("MainGplVar0");
+    	// Gtp
+    	int gtpNode = var.getNode(new int[]{1,1});
+    	// Src
+    	int srcNode = var.getNode(new int[]{0,1});
+    	// Gtp AND Src
+    	srcNode = MDDBaseOperators.AND.combine(manager, gtpNode, srcNode);
+    	
+    	var = manager.getVariableForKey("AlgVar0");
+    	// !Number
+    	newNode = var.getNode(new int[]{0,1,1,1,0,0,0,0});
+    	newNode = MDDBaseOperators.OR.combine(manager, newNode, srcNode);
+    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
+    	
+    	return baseMDD;
+    }
+    
+    
+    
+	/**
+	 * Recursive function that creates the MDD with the inline constraints.
+	 *  
+	 * @param currentNode: node on which to create a corresponding MDD node
+	 * @param destination: the node at which this node will point to when a path is valid
+	 * @return integer value of the node created. 
+	 */
 	public int getNode(Node currentNode, int destination) throws InterruptedException {
 		
 		if (manager == null)
@@ -111,7 +230,7 @@ public class MDDConv {
 
 		NodeManager ocl = new NodeManager(currentNode);
 		String varName = ocl.getName()+"Var";
-		System.out.println("var: "+varName+0);
+		// System.out.println("var: "+varName+0);
 		Vector<Node> OrderedChildrenList = ocl.getOrderedConstraintChildrenList();
 		
 		MDDVariable var = manager.getVariableForKey(varName+0);
@@ -132,10 +251,10 @@ public class MDDConv {
 		Vector<Integer> mddNodePath = new Vector<Integer>();
 		Vector<Integer> tempNodePath = new Vector<Integer>();
 
-		System.out.println("mddNodePathMatrix length: "+ mddNodePathMatrix.size());
-		System.out.println("duplicatedVar length: "+ duplicatedVar.length);
-		System.out.println("Dups: "+ ocl.getDups());
-		System.out.println("No Dups " + ocl.getBoundsNoDups());
+		// System.out.println("mddNodePathMatrix length: "+ mddNodePathMatrix.size());
+		// System.out.println("duplicatedVar length: "+ duplicatedVar.length);
+		// System.out.println("Dups: "+ ocl.getDups());
+		// System.out.println("No Dups " + ocl.getBoundsNoDups());
 		
 		int newNode = 1;
 
@@ -145,21 +264,23 @@ public class MDDConv {
     		if (ocl.getDups() == 1) {
     			// No duplications, same for all three types
     			mddNodePath.add(0);
-    			if (ocl.getMandatoryChildrenNumber() != 0)
-	    			mddNodePath.add(destination);
-
-    			System.out.println("var: "+varName+0);
-    			System.out.println("Bounds no dups: "+ ocl.getBoundsNoDups());
+	    			
+    			// System.out.println("var: "+varName+0);
+    			// System.out.println("Bounds no dups: "+ ocl.getBoundsNoDups());
     			// Cycles through all the possible values obtainable by the variable.
     			for (int j=1; j < ocl.getBoundsNoDups();j++) 
     				mddNodePath.add(destination);
-    			
 
+    			if (ocl.getMandatoryChildrenNumber() != 0) {
+    				if (ocl.getMandatoryChildrenNumber() == ocl.getTotalChildrenNumber())
+        				mddNodePath.add(0);
+    				else
+    					mddNodePath.add(destination);
+    			}
 					
     		} else {
     			// Leaf with duplications, distinguishes between ALT and OR/AND nodes.
     			if (ocl.getType() == "alt") {
-    				System.out.println("Test " + ocl.getBoundsNoDups());
 	    			// First value is zero
 	    			tempNodePath.add(0);
 
@@ -247,14 +368,11 @@ public class MDDConv {
 				if (ocl.getTotalChildrenNumber() > 1) {
 					// For every constraint, one path that leads to that constraint
 					for (int i=0; i < ocl.getConstraintChildrenNumber(); i++ ) {
-						System.out.println("New Node Going in");
 						mddNodePath.add( getNode(OrderedChildrenList.get(i), destination));
 					}
 				
 					// For every feature, one path that leads to T
 					for (int i=0; i < ocl.getFeatureChildrenNumber(); i++ ) {
-						System.out.println("New Node Going in, array is: I=" + i + " CCN="+ocl.getConstraintChildrenNumber() +" and array size is " + mddNodePath.size());
-						System.out.println("OrderedChildrenList Length: "+OrderedChildrenList.size());
 						mddNodePath.add(destination);
 					}
 				} else {
@@ -268,7 +386,7 @@ public class MDDConv {
 					}
 				}
 			
-				System.out.println("Current Node is ALT, named: "+ ocl.getName());
+				// System.out.println("Current Node is ALT, named: "+ ocl.getName());
 			}
 			
 			// AND node with mandatory part
@@ -396,35 +514,26 @@ public class MDDConv {
 			}
 		}
 		
-    	
-
-		System.out.println("ChildNodesNum#: "+ ocl.getTotalChildrenNumber());
-		System.out.println("Dups#: "+ ocl.getDups());
-		System.out.println("Node Name: "+ ocl.getName());
-		System.out.println("MDD Node Path#: ");
 		
-		// If there are no duplications, the creation of the new node can be grouped for all cases.
-		// With duplications, the creation of the nodes has to be managed by each possibility:
-		// AND or OR leaf, ALT leaf, AND non-leaf, OR non-leaf and ALT non-leaf.
-		
-		System.out.println("Mdd size: "+mddNodePath.size());
+		// System.out.println("Mdd size: "+mddNodePath.size());
 		int[] finalPath = new int[mddNodePath.size()];
 		for (int i=0;i<mddNodePath.size();i++) {
 			finalPath[i] = mddNodePath.get(i);
-			System.out.println("i: "+ i + ", Dest: " +mddNodePath.get(i));
+			 System.out.print(mddNodePath.get(i) + " ");
 		}
 		
-		System.out.println("Var Name: "+ var.key);
-		System.out.println("Var Bounds: "+ var.nbval);
-		for (int i=0;i<finalPath.length;i++) {
-			System.out.println("i: "+ i + ", Dest: " + finalPath[i]);
-		}
+		// System.out.println("Var Name: "+ var.key);
+		// System.out.println("Var Bounds: "+ var.nbval);
+		// for (int i=0;i<finalPath.length;i++) {
+		//  	System.out.println("i: "+ i + ", Dest: " + finalPath[i]);
+		// }
 		
 		// Only instance of the creation of the newNode. Each section outputs a mddNodePath list with the list for the top level variable.
+		if (ocl.getName().equals("Stock_replenishment305"))
+			System.out.println("Boutta get an error");
 		newNode = var.getNode(finalPath);
-		
 
-		System.out.println("New Node: "+ newNode);
+		System.out.println("\nNew Node: "+ newNode + " on Var:  "+ var.toString() );
 		return newNode;
 	}
     

@@ -56,10 +56,7 @@
 			<rule>
 				<imp>
 					<var>Number</var>
-					<conj>
-						<var>Gtp</var>
-						<var>Src</var>
-					</conj>
+					<var>Gtp</var>
 				</imp>
 			</rule>
 			<rule>
