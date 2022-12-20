@@ -1,4 +1,4 @@
-Model MgplModel Parameters :
+Model MgplHalfModel Parameters :
 GPL : Boolean
 MainGpl : Boolean
 TestProg : Boolean
@@ -46,18 +46,10 @@ Base : Boolean Constraints :
 # Gtp != NONE <=> MainGpl == TRUE #
 # Implementation != NONE <=> MainGpl == TRUE #
 # Base == TRUE <=> MainGpl == TRUE #
-# Number == TRUE => Gtp != NONE #
-# Connected == TRUE => Gtp == Undirected && Src != NONE #
-# StrongC == TRUE => Gtp == Directed && Src == DFS #
-# Cycle == TRUE => Gtp != NONE && Src == DFS #
-# MSTKruskal == TRUE || MSTPrim == TRUE => Gtp == Undirected && Wgt == Weighted #
 # MSTKruskal == TRUE || MSTPrim == TRUE => ! ( MSTKruskal == TRUE && MSTPrim == TRUE ) #
 # Implementation == OnlyVertices && Wgt == Weighted => WeightedOnlyVertices == TRUE #
-# Implementation == WithNeighbors && Wgt == Weighted => WeightedWithNeighbors == TRUE #
-# Implementation == WithEdges && Wgt == Weighted => WeightedWithEdges == TRUE #
 # Implementation == OnlyVertices && Gtp == Directed => HiddenGtp == DirectedOnlyVertices #
 # Implementation == WithNeighbors && Gtp == Directed => HiddenGtp == DirectedWithNeighbors #
 # Implementation == WithEdges && Gtp == Directed => HiddenGtp == DirectedWithEdges #
 # Implementation == OnlyVertices && Gtp == Undirected => HiddenGtp == UndirectedOnlyVertices #
-# Implementation == WithNeighbors && Gtp == Undirected => HiddenGtp == UndirectedWithNeighbors #
 # Implementation == WithEdges && Gtp == Undirected => HiddenGtp == UndirectedWithEdges #

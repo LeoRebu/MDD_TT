@@ -73,19 +73,6 @@ public class NodeManager {
     	
 	}
 	
-	// Returns the position of the child. -1 if not found.
-	public int getChildrenPosition(String name) {
-		NodeList children = currentNode.getChildNodes();
-    	// For each child, check whether any child is not a feature
-    	for(int i = 0; i < children.getLength(); i++) {
-    		// Only consider mandatory children for AND constraints
-			if (children.item(i).getAttributes() != null)
-				if ( children.item(i).getAttributes().getNamedItem("name").getNodeValue().equals(name)) {
-					return 1;
-				}
-    	}
-    	return -1;
-	}
 	
 	public Boolean isMDDLeaf() {
 		if(orCh.isEmpty() && andCh.isEmpty() && altCh.isEmpty() && orMandatoryCh.isEmpty() && 
@@ -149,24 +136,59 @@ public class NodeManager {
 	public byte getBounds() {
 		// Boundary corresponds to the # of child nodes mod 64. 
 		// 63 -> 64 | 64 -> 2 | 65 -> 3
-		if (currentNode.getNodeName() == "alt")
+		if (currentNode.getNodeName() == "alt") {
 			if (this.getTotalChildrenNumber() < 64)
 				return (byte) ( this.getTotalChildrenNumber() + 1 ) ;
 			else
 				return (byte) ( (byte) Math.floor(this.getBoundsNoDups()/64.0) + 1) ;
-				
-		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
-			return (byte) 2;
-		else
+		} 
+		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber()) {
+			if (this.getMandatoryChildrenNumber() > 0 && this.isMDDLeaf() && this.getDups() == 1) 
+				// Very specific case of a leaf node (probably fixable)
+				return (byte) 3;
+			else
+				return (byte) 2;
+		}
+		else {
 			// cNN - (6*(dups-1)) corresponds to the number of children mod 6, where 6 stays 6 rather than 0.
 			// 6 children = 2^6 | 7 children = 2^1 
-			return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) );
+			if ( (currentNode.getNodeName() == "and" && this.isMDDLeaf() && this.getDups() == 1 ) || this.getDups() > 1) 
+				// Very specific case of a leaf AND node to avoid flattening of node
+				return (byte) (Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) ) + 1);
+			else
+				return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) );
+		}
 	}
+	
+
+	/**
+	 * Recursive function that returns the NodeManager of the node with the given named node among his children
+	 * 
+	 * @param root: Node to examine his children. Starts with the root
+	 * @param name: the name of the node we're looking the parent of
+	 * @return NodeManager of the node with the given named node among his children, null if not found
+	 */
+    static public NodeManager findNodeParent (Node root, String name) {
+
+		NodeManager rootNM = new NodeManager(root);
+		if ( CTCManager.getChildrenPosition(rootNM, name) != -1 )
+			return rootNM;
+
+    	if (!rootNM.isMDDLeaf()) {  
+	    	for (Node n : rootNM.getOrderedConstraintChildrenList()) {  
+		    	// Recursive call if the node has child nodes  
+		    	NodeManager node = findNodeParent(n, name);   
+		    	if (node != null)
+		    		return node;
+		    }  
+	    }
+    	return null;
+    }
 
 	public double getBoundsNoDups() {
 		// Used for calculation in duplicated variables
 		if (currentNode.getNodeName() == "alt")
-			return (double) ( this.getTotalChildrenNumber() + 1 ) ;
+			return (double) ( this.getTotalChildrenNumber() + 1 );
 		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
 			return (double) 2;
 		else 
@@ -178,28 +200,28 @@ public class NodeManager {
 		
 		switch (currentNode.getNodeName()) {
 			case ("or"):
-				OrderedChildrenList.addAll(orCh);
-				// OrderedChildrenList.addAll(orMandatoryCh); // Always empty
-				OrderedChildrenList.addAll(andCh);
-				// OrderedChildrenList.addAll(andMandatoryCh); // Always empty
 				OrderedChildrenList.addAll(altCh);
 				// OrderedChildrenList.addAll(altMandatoryCh); // Always empty
+				OrderedChildrenList.addAll(andCh);
+				// OrderedChildrenList.addAll(andMandatoryCh); // Always empty
+				OrderedChildrenList.addAll(orCh);
+				// OrderedChildrenList.addAll(orMandatoryCh); // Always empty
 			break;
 			case ("and"):
-				OrderedChildrenList.addAll(orMandatoryCh);
-				OrderedChildrenList.addAll(andMandatoryCh);
 				OrderedChildrenList.addAll(altMandatoryCh);
-				OrderedChildrenList.addAll(orCh);
-				OrderedChildrenList.addAll(andCh);
+				OrderedChildrenList.addAll(andMandatoryCh);
+				OrderedChildrenList.addAll(orMandatoryCh);
 				OrderedChildrenList.addAll(altCh);
+				OrderedChildrenList.addAll(andCh);
+				OrderedChildrenList.addAll(orCh);
 			break;
 			case ("alt"):
-				OrderedChildrenList.addAll(orCh);
-				// OrderedChildrenList.addAll(orMandatoryCh); // Always empty
 				OrderedChildrenList.addAll(andCh);
 				// OrderedChildrenList.addAll(andMandatoryCh); // Always empty
 				OrderedChildrenList.addAll(altCh);
 				// OrderedChildrenList.addAll(altMandatoryCh); // Always empty
+				OrderedChildrenList.addAll(orCh);
+				// OrderedChildrenList.addAll(orMandatoryCh); // Always empty
 			break;
 		}
 		
@@ -211,20 +233,20 @@ public class NodeManager {
 		
 		switch (currentNode.getNodeName()) {
 			case ("or"):
-				OrderedChildrenList.addAll(orCh);
-				OrderedChildrenList.addAll(andCh);
 				OrderedChildrenList.addAll(altCh);
+				OrderedChildrenList.addAll(andCh);
+				OrderedChildrenList.addAll(orCh);
 				OrderedChildrenList.addAll(featCh);
 			break;
 			case ("and"):
-				OrderedChildrenList.addAll(orCh);
-				OrderedChildrenList.addAll(andCh);
-				OrderedChildrenList.addAll(altCh);
-				OrderedChildrenList.addAll(featCh);
-				OrderedChildrenList.addAll(orMandatoryCh);
-				OrderedChildrenList.addAll(andMandatoryCh);
 				OrderedChildrenList.addAll(altMandatoryCh);
+				OrderedChildrenList.addAll(andMandatoryCh);
+				OrderedChildrenList.addAll(orMandatoryCh);
 				OrderedChildrenList.addAll(featMandatoryCh);
+				OrderedChildrenList.addAll(altCh);
+				OrderedChildrenList.addAll(andCh);
+				OrderedChildrenList.addAll(orCh);
+				OrderedChildrenList.addAll(featCh);
 			break;
 			case ("alt"):
 				OrderedChildrenList.addAll(altCh);

@@ -41,7 +41,7 @@ public class App
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	try {   
-	    	String modelName = "waterloo";
+	    	String modelName = "apl";
 	   		File file = new File("featureModels/"+modelName+"Model.xml");  
 	   		DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();  
 	   		
@@ -55,8 +55,8 @@ public class App
 	   		Vector<Node> root = new Vector<Node>();
 	   		root.add(nodeList.item(0).getChildNodes().item(1));
 	   		
-	   		
-	   		// FMtoCTWtoMediciMDDGen(modelName);
+
+	   		FMtoCTWtoMediciMDDGen(modelName);
 	   		
 	   		MDDConv conv = new MDDConv();
     		// Generates the variables for the MDD
@@ -75,13 +75,15 @@ public class App
        		System.out.print("Paths #:\n " + nPaths + "\n\n");
     		
     		baseMDD = conv.applyCTConstraints(baseMDD, root.get(0), constraintsNode);
-
     		System.out.println("After CTConstraints");  
-    		manager = conv.returnManager();
-    		System.out.println("Before path searcher");  
-    		searcher = new PathSearcher(manager, 1);
+    		
+
+            System.out.print(manager.dumpMDD(baseMDD));
+    		
+    		System.out.println("Before setNode (Base MDD: " + baseMDD + ")");  
     		searcher.setNode(baseMDD);
     		System.out.println("After setNode");  
+    		searcher.getPath();
     		nPaths = searcher.countPaths();
        		System.out.print("After Constraints Paths #:\n " + nPaths + "\n\n");
        		

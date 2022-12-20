@@ -1,5 +1,8 @@
 package leo.TestMDD4;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Stack;
 import java.util.Vector;
 
 import org.colomoto.mddlib.MDDManager;
@@ -50,24 +53,18 @@ public class MDDConv {
 		    	case ("or"):
 			    	for (int i=0; i<ocl.getDups(); i++) {
 			    		
-			    		if (i == 0)
-			    			// Very specific case of a leaf AND node to avoid flattening of node
-			    			if (ocl.getMandatoryChildrenNumber() > 0 && ocl.isMDDLeaf() && ocl.getDups() == 1)
-			    				mvf.add(varName + i, (byte)(ocl.getBounds()+1));
-			    			else
-			    				mvf.add(varName + i, ocl.getBounds());
-		   				else if ( i == ocl.getDups()-1)
-			    			// 64 for variables, 65th for a zero to prevent flattening of node
-			    			mvf.add(varName + i, (byte)65 );
+			    		if (i == 0) {
+			    			mvf.add(varName + i, (byte) ocl.getBounds());
+			    		}
 		   				else
 			    			// 64 for variables, 65th for a zero to prevent flattening of node
-		   					mvf.add(varName + i, (byte)64 );
+		   					mvf.add(varName + i, (byte)65 );
 			    	}
 		    	break;
 		    	// Add as variable
 		    	case ("alt"):
 		    	
-		    		if (ocl.getTotalChildrenNumber()>1) {
+		    		if (ocl.getTotalChildrenNumber()>0) {
 			   			for (int i=0; i<ocl.getDups(); i++) {
 			   				if (i == 0)
 			   					mvf.add(varName + i, ocl.getBounds() );
@@ -75,8 +72,6 @@ public class MDDConv {
 				    			// 63 for variables, 64th for a zero to prevent flattening of node
 			   					mvf.add(varName + i, (byte)64 );
 			   			}
-		    		} else {
-	    				mvf.add(varName + 0, (byte)2 );
 		    		}
 		    			
 		    	break;
@@ -106,111 +101,128 @@ public class MDDConv {
 		}
     }
     
-    
-
-	/**
-	 * Recursive function that returns the NodeManager of the node with the given named node among his children
-	 * 
-	 * @param nodes: Vector of the nodes to be examined. Starts with the root
-	 * @param name: the name of the node we're looking the parent of
-	 * @return NodeManager of the node with the given named node among his children, null if not found
-	 */
-    public NodeManager findNodeParent (Node root, String name) {
-
-		NodeManager rootNM = new NodeManager(root);
-		
-		if ( rootNM.getChildrenPosition(name) > 0 )
-			return rootNM;
-
-    	if (!rootNM.isMDDLeaf()) {  
-	    	for (Node n : rootNM.getOrderedConstraintChildrenList()) {  
-		    	// Recursive call if the node has child nodes  
-		    	NodeManager node = findNodeParent(n, name);   
-		    	if (node != null)
-		    		return node;
-		    }  
-	    }
-    	return null;
+    private ArrayList<String> readConstraint (Node n, ArrayList<String> ret) {
+    	NodeList constraintList = n.getChildNodes();
+    	int count = 0;
+    	
+    	for (int i = 0; i < constraintList.getLength(); i++) {  
+    		Node elemNode = constraintList.item(i);  
+    		if (elemNode.getNodeType() == Node.ELEMENT_NODE) {  
+	    		// get node name and value  
+	    		//System.out.println("Node Content =" + elemNode.getTextContent()); 
+	    		switch (elemNode.getNodeName()) {
+	    		case ("var"): 
+	    			ret.add(elemNode.getTextContent());
+	    			break;
+	    		case ("imp"): 
+	    			readConstraint(elemNode,ret);
+	    			ret.add("+");
+	    			break;
+	    		case ("eq"): 
+                	System.out.println("eq node not yet implemented");
+	    			readConstraint(elemNode,ret);
+	    			break;
+	    		case ("conj"): 
+	    			readConstraint(elemNode,ret);
+    				ret.add("*");
+	    			break;
+	    		case ("disj"): 
+	    			readConstraint(elemNode,ret);
+    				ret.add("+");
+	    			break;
+	    		case ("not"): 
+	    			readConstraint(elemNode,ret);
+    				ret.add("-");
+	    			break;
+	    		}
+        		if (n.getNodeName() == "imp") {
+        			if (count++ == 0) {
+        				ret.add("-");
+        			}
+        		}
+	    	}  
+    	} 
+    	
+    	return ret;
     }
     
+    
     public int applyCTConstraints(int baseMDD, Node root, Node constraints) {
-
-   		// System.out.print("\nNode name: " + findNodeParent(root, "DirectedWithNeighbors").getName() );
-   		
+    	  		
     	NodeList constraintList = constraints.getChildNodes();
+    	ArrayList<ArrayList<String>> cList = new ArrayList<ArrayList<String>>();
+    	CTCManager ctcm = new CTCManager(manager,baseMDD, root);
     	
     	for (int count = 0; count < constraintList.getLength(); count++) {  
     		Node elemNode = constraintList.item(count);  
     		if (elemNode.getNodeType() == Node.ELEMENT_NODE) {  
-	    		// get node name and value  
-	    		//System.out.println("Node Content =" + elemNode.getTextContent());  
-	    		switch (elemNode.getNodeName()) {
-	    		case ("rule"): 
-	    			// New cross tree constraint
-	    			break;
+    			// New constraint
+	    		if (elemNode.getNodeName() == "rule") {
+	    	    	ArrayList<String> ret = new ArrayList<String>();
+	    			cList.add(readConstraint(elemNode,ret));
+	    			for (String s : ret)
+	    				System.out.print(s + " ");
+	    			System.out.println();
 	    		}
 	    	}  
     	} 
-    	
-    	// Cycle = TRUE
-    	// Pos 4
-    	MDDVariable var;
-    	int newNode;
-    	
-    	/*
-    	// !Connected2
-    	var = manager.getVariableForKey("DriverProgVar0");
-    	newNode = var.getNode(new int[]{0,1,1,0,0});
-    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
 
-    	// !Directed
-    	var = manager.getVariableForKey("GtpVar0");
-    	newNode = var.getNode(new int[]{0,0,1,1});
-    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
-    	*/
-    	/*
-    	// Connected2
-    	var = manager.getVariableForKey("DriverProgVar0");
-    	newNode = var.getNode(new int[]{0,0,0,1,1});
-    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
-		*/
     	
-    	/*
-    	// !Directed or Weighted METHOD 1
-    	var = manager.getVariableForKey("WgtVar0");
-    	int wgtNode = var.getNode(new int[]{1,1,0});
-    			
-    	var = manager.getVariableForKey("GtpVar0");
-    	newNode = var.getNode(new int[]{0,wgtNode,1,1});
-    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
-    	*/
-    	
-    	/*
-    	// !Directed or Weighted METHOD 2 (correct)
-    	var = manager.getVariableForKey("WgtVar0");
-    	int wgtNode = var.getNode(new int[]{1,1,0});
-    	var = manager.getVariableForKey("GtpVar0");
-    	newNode = var.getNode(new int[]{0,0,1,1});
-    	newNode = MDDBaseOperators.OR.combine(manager, newNode, wgtNode);
-    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
-    	*/
-    	
-    	// !Number or (Gtp and Src) 
-    	var = manager.getVariableForKey("MainGplVar0");
-    	// Gtp
-    	int gtpNode = var.getNode(new int[]{1,1});
-    	// Src
-    	int srcNode = var.getNode(new int[]{0,1});
-    	// Gtp AND Src
-    	srcNode = MDDBaseOperators.AND.combine(manager, gtpNode, srcNode);
-    	
-    	var = manager.getVariableForKey("AlgVar0");
-    	// !Number
-    	newNode = var.getNode(new int[]{0,1,1,1,0,0,0,0});
-    	newNode = MDDBaseOperators.OR.combine(manager, newNode, srcNode);
-    	baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, newNode);
-    	
-    	return baseMDD;
+    	// Fetch all the constraints
+		for (ArrayList<String> a : cList) {
+			// Fetch all the elements inside the constraint
+			Stack<Integer> tPList = new Stack<Integer>();
+			for (String s : a) {
+				
+				if (s.equals("+") || s.equals("-") || s.equals("*")) {
+					int newNode;
+					int n1 = -1;
+					int n2 = -1;
+					switch (s) {
+					case "+":
+						// OR Operation
+						assert (tPList.size() >= 2);
+						n1 = tPList.pop();
+						n2 = tPList.pop();
+						newNode = MDDBaseOperators.OR.combine(manager, n1, n2);
+						tPList.push(newNode);
+						break;
+					case "*":
+						// AND Operation
+						assert (tPList.size() >= 2);
+						n1 = tPList.pop();
+						n2 = tPList.pop();
+						newNode = MDDBaseOperators.AND.combine(manager, n1, n2);
+						tPList.push(newNode);
+						break;
+					case "-":
+						// NOT Operation
+						assert (tPList.size() >= 1);
+						n1 = tPList.pop();
+						newNode = manager.not(n1);
+						tPList.push(newNode);
+						break;
+					}
+				} else {
+					// Convert the value in a MDD and store it into a list
+					int newNode = ctcm.getMDDFromVar(s);
+					tPList.push(newNode);
+				}
+			}
+
+			// At the end of the single constraint management, each constraint must
+			// correspond to a single node
+			if (tPList.size() != 1) {
+				System.out.println(tPList.size() + " - ERROR IN CONSTRAINTS DEFINITION \n");
+				return -1;
+			}
+
+			// Now the top of the stack must contain the complete constraint representation
+			// and we can update the base node
+
+			baseMDD = MDDBaseOperators.AND.combine(manager, baseMDD, tPList.pop());
+		}
+		return baseMDD;
     }
     
     
@@ -271,7 +283,7 @@ public class MDDConv {
     			for (int j=1; j < ocl.getBoundsNoDups();j++) 
     				mddNodePath.add(destination);
 
-    			if (ocl.getMandatoryChildrenNumber() != 0) {
+    			if (ocl.getType() == "and") {
     				if (ocl.getMandatoryChildrenNumber() == ocl.getTotalChildrenNumber())
         				mddNodePath.add(0);
     				else
@@ -340,7 +352,8 @@ public class MDDConv {
 		   				// Creation of higher level nodes paths (whenever a level reaches bounds, we pack it in the higher level
 		   				for (int j = 1; j<ocl.getDups()-1; j++) {
 		   					if (mddNodePathMatrix.get(j-1).size() == 64) {
-		   						int[] helper = new int[64];
+		   						mddNodePathMatrix.get(j-1).add(0);
+		   						int[] helper = new int[65];
 		   						// Turns the Vector<Integer> that has been filled into an int[]
 		   						for (int k=0; k<64; k++)
 		   							helper[k] = mddNodePathMatrix.get(j-1).get(k);
@@ -356,6 +369,7 @@ public class MDDConv {
 		   			}
 
 		   			mddNodePath = mddNodePathMatrix.get(ocl.getDups()-2);
+		   			mddNodePath.add(0);
     			}
     		}
 			
@@ -363,9 +377,10 @@ public class MDDConv {
 			// Non Leaf Nodes
 			
 			// ALT node
+			// TODO: implement duplications
 			if (ocl.getType() == "alt") {
 				mddNodePath.add(0);
-				if (ocl.getTotalChildrenNumber() > 1) {
+				if (ocl.getTotalChildrenNumber() > 0) {
 					// For every constraint, one path that leads to that constraint
 					for (int i=0; i < ocl.getConstraintChildrenNumber(); i++ ) {
 						mddNodePath.add( getNode(OrderedChildrenList.get(i), destination));
@@ -375,17 +390,7 @@ public class MDDConv {
 					for (int i=0; i < ocl.getFeatureChildrenNumber(); i++ ) {
 						mddNodePath.add(destination);
 					}
-				} else {
-					// Weird edge case where the constraint has just one child
-					if (ocl.getConstraintChildrenNumber() > 0) {
-						//If the child is a constraint, it goes to it
-						mddNodePath.add(1,getNode(OrderedChildrenList.get(0), destination));
-					} else {
-						// If the child is a feature, it goes to true
-						mddNodePath.add(1,destination);
-					}
 				}
-			
 				// System.out.println("Current Node is ALT, named: "+ ocl.getName());
 			}
 			
@@ -413,7 +418,7 @@ public class MDDConv {
 				// PART 3: Optional constraints go in an OR structure
 				// For every optional constraint child, builds the recursions necessary to create the OR structure
 				// The optional constraint children being after the mandatory ones, they are indexed using the MCCN
-				for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
+				for (int i = ocl.getConstraintChildrenNumber() - 1; i >= 0; i--) 
 					for (int j=0; j < Math.pow(2, i); j++) 
 						if (j==0)
 							tempNodePath.add(getNode(OrderedChildrenList.get(i + ocl.getMandatoryConstraintChildrenNumber()),nextNode));
@@ -443,7 +448,8 @@ public class MDDConv {
 		   				// Creation of higher level nodes paths (whenever a level reaches bounds, we pack it in the higher level
 		   				for (int k = 1; k<ocl.getDups()-1; k++) {
 		   					if (mddNodePathMatrix.get(k-1).size() == 64) {
-		   						int[] helper = new int[64];
+		   						mddNodePathMatrix.get(k-1).add(0);
+		   						int[] helper = new int[65];
 		   						// Turns the Vector<Integer> that has been filled into an int[]
 		   						for (int l=0; l<64; l++)
 		   							helper[l] = mddNodePathMatrix.get(k-1).get(l);
@@ -457,6 +463,7 @@ public class MDDConv {
 				if (ocl.getDups() > 1) {
    					mddNodePath.clear();
 		   			mddNodePath = mddNodePathMatrix.get(ocl.getDups()-2);
+		   			mddNodePath.add(0);
 				}
 			} 
 			
@@ -464,7 +471,7 @@ public class MDDConv {
 			if ( ocl.getType() == "or" || ( ocl.getType() == "and" && ocl.getMandatoryConstraintChildrenNumber() == 0 && ocl.getMandatoryFeatureChildrenNumber() == 0)) {
 				tempNodePath.add(0,0);
 				// For every constraint child, builds the recursions necessary to create the or structure
-				for (int i=0; i < (ocl.getConstraintChildrenNumber()); i++) 
+				for (int i = ocl.getConstraintChildrenNumber() - 1; i >= 0; i--) 
 					for (int j=0; j < Math.pow(2, i); j++) 
 						if (j==0) {
 							tempNodePath.add(getNode(OrderedChildrenList.get(i),destination));
@@ -496,6 +503,7 @@ public class MDDConv {
 		   				// Creation of higher level nodes paths (whenever a level reaches bounds, we pack it in the higher level
 		   				for (int k = 1; k<ocl.getDups()-1; k++) {
 		   					if (mddNodePathMatrix.get(k-1).size() == 64) {
+		   						mddNodePathMatrix.get(k-1).add(0);
 		   						int[] helper = new int[64];
 		   						// Turns the Vector<Integer> that has been filled into an int[]
 		   						for (int l=0; l<64; l++)
@@ -510,6 +518,7 @@ public class MDDConv {
 				if (ocl.getDups() > 1) {
    					mddNodePath.clear();
 		   			mddNodePath = mddNodePathMatrix.get(ocl.getDups()-2);
+		   			mddNodePath.add(0);
 				}
 			}
 		}
@@ -529,8 +538,6 @@ public class MDDConv {
 		// }
 		
 		// Only instance of the creation of the newNode. Each section outputs a mddNodePath list with the list for the top level variable.
-		if (ocl.getName().equals("Stock_replenishment305"))
-			System.out.println("Boutta get an error");
 		newNode = var.getNode(finalPath);
 
 		System.out.println("\nNew Node: "+ newNode + " on Var:  "+ var.toString() );

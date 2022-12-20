@@ -15,8 +15,8 @@
 					</alt>
 					<or abstract="true" mandatory="true" name="Alg">
 						<feature name="Number"/>
-						<feature name="Connected2"/>
 						<feature name="Connected"/>
+						<feature name="Connected2"/>
 					</or>
 					<alt abstract="true" mandatory="true" name="Wgt">
 						<feature name="Weighted"/>
@@ -40,11 +40,26 @@
 		</struct>
 		<constraints>
 			<rule>
+				<var>Number</var>
+			</rule>
+			<rule>
 				<imp>
-					<var>Number</var>
+					<var>Connected4</var>
 					<conj>
-						<var>Gtp</var>
-						<var>Src</var>
+						<var>BFS</var>
+						<var>Directed</var>
+					</conj>
+				</imp>
+			</rule>
+			<rule>
+				<imp>
+					<disj>
+						<var>Number</var>
+						<var>Undirected</var>
+					</disj>
+					<conj>
+						<var>DFS</var>
+						<var>Weighted</var>
 					</conj>
 				</imp>
 			</rule>

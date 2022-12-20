@@ -10,8 +10,8 @@ Connected3 : Boolean
 Connected4 : Boolean
 Alg : Boolean
 Number : Boolean
-Connected2 : Boolean
 Connected : Boolean
+Connected2 : Boolean
 Wgt : { Weighted Unweighted NONE }
 Gtp : { Directed Undirected Directed2 NONE }
 Src : { BFS DFS C1 C2 C3 C4 NONE } Constraints :
@@ -25,11 +25,13 @@ Src : { BFS DFS C1 C2 C3 C4 NONE } Constraints :
 # Connected3 == TRUE => DriverProg == TRUE #
 # Connected4 == TRUE => DriverProg == TRUE #
 # Alg == TRUE <=> MainGpl == TRUE #
-# Alg == TRUE => Number == TRUE || Connected2 == TRUE || Connected == TRUE #
+# Alg == TRUE => Number == TRUE || Connected == TRUE || Connected2 == TRUE #
 # Number == TRUE => Alg == TRUE #
-# Connected2 == TRUE => Alg == TRUE #
 # Connected == TRUE => Alg == TRUE #
+# Connected2 == TRUE => Alg == TRUE #
 # Wgt != NONE <=> MainGpl == TRUE #
 # Gtp != NONE <=> MainGpl == TRUE #
 # Src != NONE => MainGpl == TRUE #
-# Number == TRUE => Gtp != NONE && Src != NONE #
+# Number == TRUE #
+# Connected4 == TRUE => Src == BFS && Gtp == Directed #
+# Number == TRUE || Gtp == Undirected => Src == DFS && Wgt == Weighted #
