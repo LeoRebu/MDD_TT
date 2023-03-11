@@ -41,7 +41,7 @@ public class App
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	try {   
-	    	String modelName = "apl";
+	    	String modelName = "eshop";
 	   		File file = new File("featureModels/"+modelName+"Model.xml");  
 	   		DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();  
 	   		
@@ -49,20 +49,21 @@ public class App
 	   		Document document = documentBuilder.parse(file);  
 	   		System.out.println("Root element: "+ document.getDocumentElement().getNodeName());  
 	   		// Contains a single item node list for the struct node
-	   		NodeList nodeList = document.getElementsByTagName("struct");
+	   		Node structNode = document.getElementsByTagName("struct").item(0);
 	   		Node constraintsNode = document.getElementsByTagName("constraints").item(0);
 	  			   		
 	   		Vector<Node> root = new Vector<Node>();
-	   		root.add(nodeList.item(0).getChildNodes().item(1));
+	   		root.add(structNode.getChildNodes().item(1));
 	   		
 
-	   		FMtoCTWtoMediciMDDGen(modelName);
+	   		//FMtoCTWtoMediciMDDGen(modelName);
+	   		
 	   		
 	   		MDDConv conv = new MDDConv();
     		// Generates the variables for the MDD
     		conv.variablesGenerator(root); 
     		// Displays the variables currently generated
-    		conv.displayVars();
+    		conv.getManager();
     		// Generates the MDD with the inline constraints
     		int baseMDD = conv.getNode(root.get(0), 1);
     		
@@ -71,18 +72,14 @@ public class App
     		searcher.setNode(baseMDD);
        		System.out.print("\nBefore countPaths\n");
     		searcher.getPath();
-    		int nPaths = searcher.countPaths();
-       		System.out.print("Paths #:\n " + nPaths + "\n\n");
+    		int nPaths; //= searcher.countPaths();
+       		//System.out.print("Paths #:\n " + nPaths + "\n\n");
     		
     		baseMDD = conv.applyCTConstraints(baseMDD, root.get(0), constraintsNode);
-    		System.out.println("After CTConstraints");  
-    		
-
-            System.out.print(manager.dumpMDD(baseMDD));
+    		System.out.println("After CTConstraints"); 
     		
     		System.out.println("Before setNode (Base MDD: " + baseMDD + ")");  
     		searcher.setNode(baseMDD);
-    		System.out.println("After setNode");  
     		searcher.getPath();
     		nPaths = searcher.countPaths();
        		System.out.print("After Constraints Paths #:\n " + nPaths + "\n\n");
@@ -229,7 +226,7 @@ public class App
    		
 		// Loads the (just converted) medici model in the TestModel class
 		TestModel m = Operations.readFile(mediciPath); // TestModel = model with constraints
-
+		
 		// Converts the model in an MDD, the class returns the MDD itself and the starting node
    		System.out.print("\nBefore ModelToMDDConverter\n");
    		ModelToMDDConverter mc = new ModelToMDDConverter(m);
@@ -237,6 +234,11 @@ public class App
 		MDDManager manager = mc.getMDD();
    		System.out.print("\nBefore getStartingNode\n");
 		int baseMDD = mc.getStartingNode();
+		
+		
+		for (MDDVariable x : manager.getAllVariables()) {
+        	System.out.print(x.toString());
+        }
 		
 		// Applies constraint to the "floating" MDD
    		System.out.print("\nBefore updateMDDWithConstraints\n");

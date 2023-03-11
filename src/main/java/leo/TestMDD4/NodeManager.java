@@ -24,12 +24,10 @@ public class NodeManager {
 		orCh = new Vector<Node>();
 		andCh = new Vector<Node>();
 		altCh = new Vector<Node>();
-		//if (currentNode.getNodeName() == "and") {
-			featMandatoryCh = new Vector<Node>();
-			orMandatoryCh = new Vector<Node>();
-			andMandatoryCh = new Vector<Node>();
-			altMandatoryCh = new Vector<Node>();
-		//}
+		featMandatoryCh = new Vector<Node>();
+		orMandatoryCh = new Vector<Node>();
+		andMandatoryCh = new Vector<Node>();
+		altMandatoryCh = new Vector<Node>();
 		
 		
 		NodeList children = currentNode.getChildNodes();
@@ -71,6 +69,13 @@ public class NodeManager {
 	    	}
     	}
     	
+	}
+	
+	public Boolean isMandatory() {
+		if (currentNode.getAttributes() != null)
+			if (currentNode.getAttributes().getNamedItem("mandatory") != null )
+				return true;
+		return false;
 	}
 	
 	
@@ -117,12 +122,7 @@ public class NodeManager {
 	
 	public int getDups() {
 		if (currentNode.getNodeName() == "alt")
-			// maths should be good now
-			if (this.getTotalChildrenNumber() < 64)
-				return 1;
-			else
-				// It would require 4000 children to go over 2 duplications
-				return 2;
+			return (int) Math.ceil( this.getTotalChildrenNumber() / 64.0);
 		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber())
 			return (int) 1;
 		else			
@@ -131,29 +131,24 @@ public class NodeManager {
 			return (int) Math.ceil( (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) / 6.0);
 	}
 	
-	
-	// TODO: add extra value to get around the semplification that'd flatten nodes that are all 1s
 	public byte getBounds() {
 		// Boundary corresponds to the # of child nodes mod 64. 
 		// 63 -> 64 | 64 -> 2 | 65 -> 3
 		if (currentNode.getNodeName() == "alt") {
-			if (this.getTotalChildrenNumber() < 64)
+			if (this.getTotalChildrenNumber() < 65)
 				return (byte) ( this.getTotalChildrenNumber() + 1 ) ;
 			else
-				return (byte) ( (byte) Math.floor(this.getBoundsNoDups()/64.0) + 1) ;
+				return (byte) ( (byte) Math.ceil(this.getBoundsNoDups()/64.0)) ;
 		} 
 		else if (this.getTotalChildrenNumber() == this.getMandatoryChildrenNumber()) {
-			if (this.getMandatoryChildrenNumber() > 0 && this.isMDDLeaf() && this.getDups() == 1) 
-				// Very specific case of a leaf node (probably fixable)
+				// Very specific case of a leaf node 
 				return (byte) 3;
-			else
-				return (byte) 2;
 		}
 		else {
 			// cNN - (6*(dups-1)) corresponds to the number of children mod 6, where 6 stays 6 rather than 0.
 			// 6 children = 2^6 | 7 children = 2^1 
-			if ( (currentNode.getNodeName() == "and" && this.isMDDLeaf() && this.getDups() == 1 ) || this.getDups() > 1) 
-				// Very specific case of a leaf AND node to avoid flattening of node
+			if ( (currentNode.getNodeName() == "and") || this.getDups() > 1) 
+				// AND nodes and duplicated nodes require one more to avoid flattening of node
 				return (byte) (Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) ) + 1);
 			else
 				return (byte) Math.pow( 2, (this.getTotalChildrenNumber() - this.getMandatoryChildrenNumber() ) - (6*(this.getDups()-1)) );
@@ -200,12 +195,10 @@ public class NodeManager {
 		
 		switch (currentNode.getNodeName()) {
 			case ("or"):
+			case ("alt"):
 				OrderedChildrenList.addAll(altCh);
-				// OrderedChildrenList.addAll(altMandatoryCh); // Always empty
 				OrderedChildrenList.addAll(andCh);
-				// OrderedChildrenList.addAll(andMandatoryCh); // Always empty
 				OrderedChildrenList.addAll(orCh);
-				// OrderedChildrenList.addAll(orMandatoryCh); // Always empty
 			break;
 			case ("and"):
 				OrderedChildrenList.addAll(altMandatoryCh);
@@ -214,14 +207,6 @@ public class NodeManager {
 				OrderedChildrenList.addAll(altCh);
 				OrderedChildrenList.addAll(andCh);
 				OrderedChildrenList.addAll(orCh);
-			break;
-			case ("alt"):
-				OrderedChildrenList.addAll(andCh);
-				// OrderedChildrenList.addAll(andMandatoryCh); // Always empty
-				OrderedChildrenList.addAll(altCh);
-				// OrderedChildrenList.addAll(altMandatoryCh); // Always empty
-				OrderedChildrenList.addAll(orCh);
-				// OrderedChildrenList.addAll(orMandatoryCh); // Always empty
 			break;
 		}
 		
@@ -233,6 +218,7 @@ public class NodeManager {
 		
 		switch (currentNode.getNodeName()) {
 			case ("or"):
+			case ("alt"):
 				OrderedChildrenList.addAll(altCh);
 				OrderedChildrenList.addAll(andCh);
 				OrderedChildrenList.addAll(orCh);
@@ -243,12 +229,6 @@ public class NodeManager {
 				OrderedChildrenList.addAll(andMandatoryCh);
 				OrderedChildrenList.addAll(orMandatoryCh);
 				OrderedChildrenList.addAll(featMandatoryCh);
-				OrderedChildrenList.addAll(altCh);
-				OrderedChildrenList.addAll(andCh);
-				OrderedChildrenList.addAll(orCh);
-				OrderedChildrenList.addAll(featCh);
-			break;
-			case ("alt"):
 				OrderedChildrenList.addAll(altCh);
 				OrderedChildrenList.addAll(andCh);
 				OrderedChildrenList.addAll(orCh);
