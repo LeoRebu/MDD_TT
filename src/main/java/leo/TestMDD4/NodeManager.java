@@ -166,7 +166,7 @@ public class NodeManager {
     static public NodeManager findNodeParent (Node root, String name) {
 
 		NodeManager rootNM = new NodeManager(root);
-		if ( CTCManager.getChildrenPosition(rootNM, name) != -1 )
+		if ( rootNM.getChildPosition(name) != -1 )
 			return rootNM;
 
     	if (!rootNM.isMDDLeaf()) {  
@@ -239,9 +239,43 @@ public class NodeManager {
 		return OrderedChildrenList;
 	}
 	
-	
-	
-	
+
+	// Returns the position of the child. -1 if not found. -2 if mandatory. 
+	// For an ALT node, returns its exact position in the path. For OR and AND nodes returns the corresponding binary digit position.
+	public int getChildPosition(String name) {
+		Vector<Node> children = this.getOrderedChildrenList();
+		int pos = -1;
+		
+		for (Node n : children) {
+			if (n.getAttributes().getNamedItem("name").getNodeValue().equals(name)) {
+				
+				switch (this.getType()) {
+				case "alt":
+					// Position in the path is equal to its position in the OCL (indexed starting from 1)
+					pos = children.indexOf(n) + 1;
+					break;
+				case "and":
+				case "or":
+					if (n.getAttributes().getNamedItem("mandatory") != null && this.getType().equals("and") )
+						// The child is mandatory
+						pos = -2;
+					else
+						//pos = children.indexOf(n) - node.getMandatoryChildrenNumber() + 1;
+						if (n.getNodeName().equals("alt") || n.getNodeName().equals("and") || n.getNodeName().equals("or"))
+							// Position of the corresponding binary digit of the path is the inverse of the list.
+							//pos = children.indexOf(n) + node.getFeatureChildrenNumber() - node.getMandatoryChildrenNumber() + 1;
+							pos = children.indexOf(n) - this.getMandatoryChildrenNumber() + this.getFeatureChildrenNumber() + 1;
+						else
+							//pos = children.size() - children.indexOf(n);
+							pos = children.indexOf(n) - this.getMandatoryChildrenNumber() - this.getConstraintChildrenNumber() + 1;
+					break;
+				}
+			}
+		}
+		
+    	return pos;
+	}
+
 	
 	
 }

@@ -26,44 +26,58 @@ public class CTCManager {
     	
 	}
 
-    static ArrayList<String> readConstraint (Node n, ArrayList<String> ret) {
+
+    static ArrayList<String> readConstraint (Node n) {
     	NodeList constraintList = n.getChildNodes();
     	int count = 0;
+    	ArrayList<String> ret = new ArrayList<String>();
+
     	
     	for (int i = 0; i < constraintList.getLength(); i++) {  
     		Node elemNode = constraintList.item(i);  
+    		// We only care about element nodes
     		if (elemNode.getNodeType() == Node.ELEMENT_NODE) {  
-	    		// get node name and value  
-	    		//System.out.println("Node Content =" + elemNode.getTextContent()); 
 	    		switch (elemNode.getNodeName()) {
 	    		case ("var"): 
+	    			// Add the name of the var to the list
 	    			ret.add(elemNode.getTextContent());
 	    			break;
-	    		case ("imp"): 
-	    			readConstraint(elemNode,ret);
-	    			ret.add("+");
-	    			break;
-	    		case ("eq"): 
-                	System.out.println("eq node not yet implemented");
-	    			readConstraint(elemNode,ret);
+	    		case ("not"): 
+	    			// Recursively explore the children of the node and then negate them 
+	    			ret.addAll(readConstraint(elemNode));
+    				ret.add("-");
 	    			break;
 	    		case ("conj"): 
-	    			readConstraint(elemNode,ret);
+	    			// Recursively explore the children of the node and then link them with an and in postfix notation
+	    			ret.addAll(readConstraint(elemNode));
     				ret.add("*");
 	    			break;
 	    		case ("disj"): 
-	    			readConstraint(elemNode,ret);
+	    			// Recursively explore the children of the node and then link them with an or in postfix notation
+	    			ret.addAll(readConstraint(elemNode));
     				ret.add("+");
 	    			break;
-	    		case ("not"): 
-	    			readConstraint(elemNode,ret);
-    				ret.add("-");
+	    		case ("imp"): 
+	    			// Recursively explore the children of the node (noting the first child needs negating) and then link them with an or in postfix notation
+	    			ret.addAll(readConstraint(elemNode));
+	    			ret.add("+");
+	    			break;
+	    		case ("eq"): 
+	    			// Recursively explore the children of the node, linking them with an and in postfix notation
+	    			ret.addAll(readConstraint(elemNode));
+	    			ret.add("*");
+	    			// Recursively explore the children of the node, linking them with an or in postfix notation and negating it
+	    			ret.addAll(readConstraint(elemNode));
+	    			ret.add("+");
+	    			ret.add("-");
+	    			// Complete the XNOR by linking the previous two statements with an or in postfix notation
+	    			ret.add("+");
 	    			break;
 	    		}
         		if (n.getNodeName() == "imp") {
-        			if (count++ == 0) {
+        			// Only negate the first item
+        			if (count++ == 0) 
         				ret.add("-");
-        			}
         		}
 	    	}  
     	} 
@@ -74,15 +88,16 @@ public class CTCManager {
 
 	public int getMDDFromVar(String name) {
 		
-			
 		int newNode = -1;
-		NodeManager parentNode, childNode = null;
+		NodeManager parentNode;
 		MDDVariable var;
 		int position;
 		int dim;
 		Integer varPosition = -1;
 		parentNode = NodeManager.findNodeParent(structRoot, name);
-   		position = getChildrenPosition(parentNode,name);
+		
+   		position = parentNode.getChildPosition(name);
+   		
    		if (position > 0)
    			varPosition =  parentNode.getDups() - (int) Math.ceil( position / 6.0 );
    		else if (position == -2)
@@ -90,36 +105,17 @@ public class CTCManager {
    		else 
    			System.out.println("Var position not found");
    		
-   		/*
-		for (Node n : parentNode.getOrderedChildrenList()) {
-			if (n.getAttributes().getNamedItem("name").getNodeValue().equals(name)) {
-				childNode = new NodeManager(n);
-			}
-		}*/
 
    		var = manager.getVariableForKey(parentNode.getName()+"Var" + varPosition.toString());
-   		
-   		if (varPosition > 0) 
-   			dim = 65;
-   		else
-   			dim = parentNode.getBounds();
+   		dim = var.nbval;
 
 		// Reflects its position in the (possibly duplicated) variable. Has to be between 1 and 6 included.
 		int realPosition;
 		if (position>0 && parentNode.getType() != "alt")
 			realPosition = (position - 6 * ((int) Math.ceil( position / 6.0 ) - 1));
+			// realPosition = position + 6 - (int) Math.ceil( position / 6.0 ) * 6;
 		else
 			realPosition = position;
-
-		System.out.println("Name = " + name);
-		System.out.println("Node Type = " + parentNode.getType());
-		System.out.println("Position = " + position);
-		System.out.println("Var Position = " + varPosition);
-		System.out.println("Var Name = " + var.toString());
-		System.out.println("Dim = " + dim);
-		System.out.println("Real Position = " + realPosition);
-		System.out.println();
-		System.out.println("Name = " + name + "  - Father Name = " + parentNode.getName());
 
     	newNode = var.getNode( getChildrenList(parentNode.getType(), dim, realPosition ) );
     	
@@ -128,44 +124,9 @@ public class CTCManager {
     		int fatherNode = getMDDFromVar(parentNode.getName());
     		newNode = MDDBaseOperators.AND.combine(manager, newNode, fatherNode);
     	}
+    	
 		return newNode;
 
-	}
-	
-	// Returns the position of the child. -1 if not found. -2 if mandatory. 
-	// For an ALT node, returns its exact position in the path. For OR and AND nodes returns the corresponding binary digit position.
-	static public int getChildrenPosition(NodeManager node, String name) {
-		Vector<Node> children = node.getOrderedChildrenList();
-		int pos = -1;
-		
-		for (Node n : children) {
-			if (n.getAttributes().getNamedItem("name").getNodeValue().equals(name)) {
-				
-				switch (node.getType()) {
-				case "alt":
-					// Position in the path is equal to its position in the OCL (indexed starting from 1)
-					pos = children.indexOf(n) + 1;
-					break;
-				case "and":
-				case "or":
-					if (n.getAttributes().getNamedItem("mandatory") != null && node.getType().equals("and") )
-						// The child is mandatory
-						pos = -2;
-					else
-						//pos = children.indexOf(n) - node.getMandatoryChildrenNumber() + 1;
-						if (n.getNodeName().equals("alt") || n.getNodeName().equals("and") || n.getNodeName().equals("or"))
-							// Position of the corresponding binary digit of the path is the inverse of the list.
-							//pos = children.indexOf(n) + node.getFeatureChildrenNumber() - node.getMandatoryChildrenNumber() + 1;
-							pos = children.indexOf(n) - node.getMandatoryChildrenNumber() + node.getFeatureChildrenNumber() + 1;
-						else
-							//pos = children.size() - children.indexOf(n);
-							pos = children.indexOf(n) - node.getMandatoryChildrenNumber() - node.getConstraintChildrenNumber() + 1;
-					break;
-				}
-			}
-		}
-		
-    	return pos;
 	}
 	
 	
@@ -198,7 +159,6 @@ public class CTCManager {
 					childrenList[i] = 1;
 				else 
 					childrenList[i] = 0;
-
 			}
 		break;
 		case "and":
@@ -222,12 +182,12 @@ public class CTCManager {
 			}
 		break;
 		}
-
+/*
 		System.out.print("Pos: "+ pos + ", type: " + type + " - ");
 		for (int i=0;i<dim;i++)
 			System.out.print(childrenList[i] + " ");
 		System.out.println();
-		System.out.println();
+		System.out.println();*/
 		
 		return childrenList;
 	}
